@@ -119,6 +119,9 @@ static std::string releaseOrCodename(const std::string& codename, const std::str
     return (codename.empty() || codename == "REL") ? release : codename;
 }
 
+// WiFi hook installer (from wifi_hook.cpp)
+extern "C" void installWiFiHook(JNIEnv* env, zygisk::Api* api);
+
 class COPGVDModule : public zygisk::ModuleBase {
 private:
     zygisk::Api* api = nullptr;
@@ -413,11 +416,7 @@ private:
             // Airplane mode off
             sp("persist.sys.airplane_mode", "off");
             __system_property_set("persist.radio.airplane_mode_on", "0");
-            // Wi-Fi
-            if (!spoof_info.wifi_ssid.empty()) {
-                sp("net.hostname", spoof_info.wifi_ssid);
-                sp("persist.sys.wifi_ssid", spoof_info.wifi_ssid);
-            }
+            // Wi-Fi SSID handled via JNI hook (wifi_hook.cpp)
             // MediaDrm / Widevine
             if (!spoof_info.media_drm_id.empty()) {
                 sp("media.drm.id", spoof_info.media_drm_id);
@@ -450,6 +449,11 @@ private:
     }
 
 public:
+    void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
+        // Install WiFi SSID hook for target app process
+        installWiFiHook(env, api);
+    }
+
     void onLoad(zygisk::Api* api, JNIEnv* env) override {
         this->api = api;
         this->env = env;
