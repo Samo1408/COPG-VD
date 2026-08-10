@@ -1,0 +1,28 @@
+[{
+    "carrier": "T-Mobile US",
+    "mccmnc": "310410",
+    "country": "United States",
+    "lat": 40.7128,
+    "long": -74.006,
+    "timezone": "America/New_York",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "AT&T;
+    "mccmnc": "310410",
+    "country": "United States",
+    "lat": 33.749,
+    "long": -84.388,
+    "timezone": "America/New_York",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Verizon",
+    "mccmnc": "311480",
+    "country": "United States",
+    "lat": 40.7128,
+    "long": -74.006,
+    "timezone": "America/New_York",
+    "networkType": "LTE"
+  }
+]
