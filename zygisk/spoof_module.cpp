@@ -6,6 +6,9 @@
 #include <android/log.h>
 #include <algorithm>
 #include <cctype>
+#include <sys/system_properties.h>
+#include <unistd.h>
+#include <dlfcn.h>
 
 using json = nlohmann::json;
 
@@ -60,6 +63,20 @@ struct DeviceInfo {
     std::string version_release_or_codename;
     std::string version_release_or_preview_display;
     std::string version_codename;
+    std::string sim_mccmnc;
+    std::string sim_country;
+    std::string sim_iso;
+    std::string sim_carrier;
+    std::string gps_lat;
+    std::string gps_long;
+    std::string gps_timezone;
+    std::string baseband_version;
+    std::string ram_gb;
+    std::string usb_debugging;
+    bool sim_spoof_enabled = false;
+    std::string build_host;
+    std::string build_user;
+    std::string build_tags;
 };
 
 static inline std::string trim(const std::string& str) {
@@ -206,6 +223,23 @@ private:
                 spoof_info.user = device.value("USER", "");
                 spoof_info.version_incremental = device.value("INCREMENTAL", "");
                 spoof_info.version_security_patch = device.value("SECURITY_PATCH", "");
+                spoof_info.baseband_version = device.value("BASEBAND", "");
+                spoof_info.ram_gb = device.value("RAM_GB", "12");
+                spoof_info.usb_debugging = device.value("USB_DEBUGGING", "0");
+                spoof_info.build_host = device.value("HOST", "");
+                spoof_info.build_user = device.value("USER", "");
+                spoof_info.build_tags = device.value("TAGS", "release-keys");
+                if (config.contains("COPG-VD-SimGps") && config["COPG-VD-SimGps"].is_object()) {
+                    auto& sg = config["COPG-VD-SimGps"];
+                    spoof_info.sim_spoof_enabled = sg.value("SIM_SPOOF_ENABLED", false);
+                    spoof_info.sim_mccmnc = sg.value("SIM_MCCMNC", "");
+                    spoof_info.sim_country = sg.value("SIM_COUNTRY", "");
+                    spoof_info.sim_iso = sg.value("SIM_ISO", "");
+                    spoof_info.sim_carrier = sg.value("SIM_CARRIER", "");
+                    spoof_info.gps_lat = sg.value("GPS_LAT", "");
+                    spoof_info.gps_long = sg.value("GPS_LONG", "");
+                    spoof_info.gps_timezone = sg.value("GPS_TIMEZONE", "");
+                }
                 if (device.contains("TIMESTAMP")) {
                     const auto& device_timestamp = device["TIMESTAMP"];
                     spoof_info.time = std::stoll(device_timestamp.get<std::string>()) * 1000;
@@ -337,6 +371,31 @@ private:
             setStr(versionClass, build_version_release_or_preview_displayField, spoof_info.version_release_or_preview_display);
         }
 
+        if (spoof_info.sim_spoof_enabled) {
+            auto sp = [](const char* k, const std::string& v) { if(!v.empty()) __system_property_set(k, v.c_str()); };
+            sp("gsm.version.baseband", spoof_info.baseband_version);
+            sp("gsm.sim.operator.alpha", spoof_info.sim_carrier);
+            sp("gsm.sim.operator.numeric", spoof_info.sim_mccmnc);
+            sp("gsm.sim.operator.iso-country", spoof_info.sim_iso);
+            sp("gsm.operator.alpha", spoof_info.sim_carrier);
+            sp("gsm.operator.numeric", spoof_info.sim_mccmnc);
+            sp("gsm.operator.iso-country", spoof_info.sim_iso);
+            sp("ro.carrier", spoof_info.sim_mccmnc);
+            sp("ro.com.google.clientidbase", spoof_info.sim_mccmnc);
+            if (!spoof_info.gps_lat.empty() && !spoof_info.gps_long.empty()) {
+                sp("persist.sys.loc.lat", spoof_info.gps_lat);
+                sp("persist.sys.loc.lng", spoof_info.gps_long);
+            }
+            sp("persist.sys.timezone", spoof_info.gps_timezone);
+            if (spoof_info.usb_debugging == "1") {
+                __system_property_set("persist.sys.usb.config", "adb");
+                __system_property_set("sys.usb.config", "adb");
+                __system_property_set("sys.usb.state", "adb");
+            }
+            sp("ro.build.host", spoof_info.build_host);
+            sp("ro.build.user", spoof_info.build_user);
+            sp("ro.build.tags", spoof_info.build_tags);
+        }
         env->DeleteLocalRef(buildClass);
         if (versionClass) env->DeleteLocalRef(versionClass);
     }
