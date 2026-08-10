@@ -119,8 +119,6 @@ static std::string releaseOrCodename(const std::string& codename, const std::str
     return (codename.empty() || codename == "REL") ? release : codename;
 }
 
-// WiFi hook installer (from wifi_hook.cpp)
-extern "C" void installWiFiHook(JNIEnv* env, zygisk::Api* api);
 
 class COPGVDModule : public zygisk::ModuleBase {
 private:
@@ -449,9 +447,32 @@ private:
     }
 
 public:
+    // === Static hook data (filled in onLoad, used in preAppSpecialize) ===
+    static std::string s_wifi_ssid;
+    static std::string s_media_drm_id;
+    static std::string s_sim_iso;
+    static std::string s_sim_carrier;
+    static std::string s_sim_mccmnc;
+    static bool s_sim_spoof_enabled;
+    
+    // Hooked native methods for WiFi
+    static jstring hooked_getSSID(JNIEnv* env, jobject /* thiz */) {
+        if (!s_wifi_ssid.empty()) {
+            return env->NewStringUTF(s_wifi_ssid.c_str());
+        }
+        return env->NewStringUTF("");
+    }
+
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
-        // Install WiFi SSID hook for target app process
-        installWiFiHook(env, api);
+        if (s_sim_spoof_enabled) {
+            // Hook WifiInfo.getSSID() native method
+            if (!s_wifi_ssid.empty()) {
+                JNINativeMethod wifiMethods[] = {
+                    {"getSSID", "()Ljava/lang/String;", (void*)hooked_getSSID}
+                };
+                api->hookJniNativeMethods(env, "android/net/wifi/WifiInfo", wifiMethods, 1);
+            }
+        }
     }
 
     void onLoad(zygisk::Api* api, JNIEnv* env) override {
@@ -460,8 +481,23 @@ public:
 
         spoofDevice();
 
+        // Save config to static members for preAppSpecialize hooks
+        s_wifi_ssid = spoof_info.wifi_ssid;
+        s_media_drm_id = spoof_info.media_drm_id;
+        s_sim_iso = spoof_info.sim_iso;
+        s_sim_carrier = spoof_info.sim_carrier;
+        s_sim_mccmnc = spoof_info.sim_mccmnc;
+        s_sim_spoof_enabled = spoof_info.sim_spoof_enabled;
+
         api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
     }
 };
+
+std::string COPGVDModule::s_wifi_ssid;
+std::string COPGVDModule::s_media_drm_id;
+std::string COPGVDModule::s_sim_iso;
+std::string COPGVDModule::s_sim_carrier;
+std::string COPGVDModule::s_sim_mccmnc;
+bool COPGVDModule::s_sim_spoof_enabled = false;
 
 REGISTER_ZYGISK_MODULE(COPGVDModule)

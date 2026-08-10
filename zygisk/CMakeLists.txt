@@ -16,7 +16,6 @@ endif()
 set(ZYGISK_SOURCES
     spoof_module.cpp
     atexit.cpp
-    wifi_hook.cpp
 )
 
 add_library(spoof SHARED ${ZYGISK_SOURCES})
