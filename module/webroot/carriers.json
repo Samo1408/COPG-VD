@@ -8,7 +8,7 @@
     "networkType": "LTE"
   },
   {
-    "carrier": "AT&T;
+    "carrier": "AT&T;",
     "mccmnc": "310410",
     "country": "United States",
     "lat": 33.749,
@@ -23,6 +23,420 @@
     "lat": 40.7128,
     "long": -74.006,
     "timezone": "America/New_York",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Vodafone UK",
+    "mccmnc": "23415",
+    "country": "United Kingdom",
+    "lat": 51.5074,
+    "long": -0.1278,
+    "timezone": "Europe/London",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "EE UK",
+    "mccmnc": "23430",
+    "country": "United Kingdom",
+    "lat": 51.5074,
+    "long": -0.1278,
+    "timezone": "Europe/London",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "O2 UK",
+    "mccmnc": "23410",
+    "country": "United Kingdom",
+    "lat": 51.5074,
+    "long": -0.1278,
+    "timezone": "Europe/London",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Deutsche Telekom",
+    "mccmnc": "26201",
+    "country": "Germany",
+    "lat": 52.5200,
+    "long": 13.4050,
+    "timezone": "Europe/Berlin",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Vodafone DE",
+    "mccmnc": "26202",
+    "country": "Germany",
+    "lat": 52.5200,
+    "long": 13.4050,
+    "timezone": "Europe/Berlin",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "O2 DE",
+    "mccmnc": "26203",
+    "country": "Germany",
+    "lat": 52.5200,
+    "long": 13.4050,
+    "timezone": "Europe/Berlin",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Orange FR",
+    "mccmnc": "20801",
+    "country": "France",
+    "lat": 48.8566,
+    "long": 2.3522,
+    "timezone": "Europe/Paris",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "SFR",
+    "mccmnc": "20810",
+    "country": "France",
+    "lat": 48.8566,
+    "long": 2.3522,
+    "timezone": "Europe/Paris",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Bouygues",
+    "mccmnc": "20820",
+    "country": "France",
+    "lat": 48.8566,
+    "long": 2.3522,
+    "timezone": "Europe/Paris",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "STC SA",
+    "mccmnc": "42001",
+    "country": "Saudi Arabia",
+    "lat": 24.7136,
+    "long": 46.6753,
+    "timezone": "Asia/Riyadh",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Mobily",
+    "mccmnc": "42003",
+    "country": "Saudi Arabia",
+    "lat": 24.7136,
+    "long": 46.6753,
+    "timezone": "Asia/Riyadh",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Zain SA",
+    "mccmnc": "42004",
+    "country": "Saudi Arabia",
+    "lat": 24.7136,
+    "long": 46.6753,
+    "timezone": "Asia/Riyadh",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Etisalat UAE",
+    "mccmnc": "42402",
+    "country": "United Arab Emirates",
+    "lat": 25.2048,
+    "long": 55.2708,
+    "timezone": "Asia/Dubai",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "du UAE",
+    "mccmnc": "42403",
+    "country": "United Arab Emirates",
+    "lat": 25.2048,
+    "long": 55.2708,
+    "timezone": "Asia/Dubai",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Turkcell",
+    "mccmnc": "28601",
+    "country": "Turkey",
+    "lat": 41.0082,
+    "long": 28.9784,
+    "timezone": "Europe/Istanbul",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Vodafone TR",
+    "mccmnc": "28602",
+    "country": "Turkey",
+    "lat": 41.0082,
+    "long": 28.9784,
+    "timezone": "Europe/Istanbul",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Turk Telekom",
+    "mccmnc": "28603",
+    "country": "Turkey",
+    "lat": 41.0082,
+    "long": 28.9784,
+    "timezone": "Europe/Istanbul",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "NTT Docomo",
+    "mccmnc": "44010",
+    "country": "Japan",
+    "lat": 35.6762,
+    "long": 139.6503,
+    "timezone": "Asia/Tokyo",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "SoftBank",
+    "mccmnc": "44020",
+    "country": "Japan",
+    "lat": 35.6762,
+    "long": 139.6503,
+    "timezone": "Asia/Tokyo",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "KDDI au",
+    "mccmnc": "44050",
+    "country": "Japan",
+    "lat": 35.6762,
+    "long": 139.6503,
+    "timezone": "Asia/Tokyo",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "China Mobile",
+    "mccmnc": "46000",
+    "country": "China",
+    "lat": 39.9042,
+    "long": 116.4074,
+    "timezone": "Asia/Shanghai",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "China Unicom",
+    "mccmnc": "46001",
+    "country": "China",
+    "lat": 39.9042,
+    "long": 116.4074,
+    "timezone": "Asia/Shanghai",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Airtel India",
+    "mccmnc": "40493",
+    "country": "India",
+    "lat": 28.6139,
+    "long": 77.2090,
+    "timezone": "Asia/Kolkata",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Jio",
+    "mccmnc": "405840",
+    "country": "India",
+    "lat": 19.076,
+    "long": 72.8777,
+    "timezone": "Asia/Kolkata",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Vodafone IN",
+    "mccmnc": "40405",
+    "country": "India",
+    "lat": 28.6139,
+    "long": 77.2090,
+    "timezone": "Asia/Kolkata",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Telcel MX",
+    "mccmnc": "334020",
+    "country": "Mexico",
+    "lat": 19.4326,
+    "long": -99.1332,
+    "timezone": "America/Mexico_City",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Claro BR",
+    "mccmnc": "72405",
+    "country": "Brazil",
+    "lat": -23.5505,
+    "long": -46.6333,
+    "timezone": "America/Sao_Paulo",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Vivo BR",
+    "mccmnc": "72410",
+    "country": "Brazil",
+    "lat": -23.5505,
+    "long": -46.6333,
+    "timezone": "America/Sao_Paulo",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Tim BR",
+    "mccmnc": "72402",
+    "country": "Brazil",
+    "lat": -23.5505,
+    "long": -46.6333,
+    "timezone": "America/Sao_Paulo",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Personal AR",
+    "mccmnc": "722340",
+    "country": "Argentina",
+    "lat": -34.6037,
+    "long": -58.3816,
+    "timezone": "America/Argentina/Buenos_Aires",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Movistar AR",
+    "mccmnc": "72207",
+    "country": "Argentina",
+    "lat": -34.6037,
+    "long": -58.3816,
+    "timezone": "America/Argentina/Buenos_Aires",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Telstra AU",
+    "mccmnc": "50501",
+    "country": "Australia",
+    "lat": -33.8688,
+    "long": 151.2093,
+    "timezone": "Australia/Sydney",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Optus",
+    "mccmnc": "50502",
+    "country": "Australia",
+    "lat": -33.8688,
+    "long": 151.2093,
+    "timezone": "Australia/Sydney",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Vodafone AU",
+    "mccmnc": "50503",
+    "country": "Australia",
+    "lat": -33.8688,
+    "long": 151.2093,
+    "timezone": "Australia/Sydney",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "SK Telecom",
+    "mccmnc": "45005",
+    "country": "South Korea",
+    "lat": 37.5665,
+    "long": 126.978,
+    "timezone": "Asia/Seoul",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "KT",
+    "mccmnc": "45008",
+    "country": "South Korea",
+    "lat": 37.5665,
+    "long": 126.978,
+    "timezone": "Asia/Seoul",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "LG U+",
+    "mccmnc": "45006",
+    "country": "South Korea",
+    "lat": 37.5665,
+    "long": 126.978,
+    "timezone": "Asia/Seoul",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Rogers CA",
+    "mccmnc": "302720",
+    "country": "Canada",
+    "lat": 43.6532,
+    "long": -79.3832,
+    "timezone": "America/Toronto",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Bell CA",
+    "mccmnc": "302610",
+    "country": "Canada",
+    "lat": 43.6532,
+    "long": -79.3832,
+    "timezone": "America/Toronto",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Telus",
+    "mccmnc": "302220",
+    "country": "Canada",
+    "lat": 43.6532,
+    "long": -79.3832,
+    "timezone": "America/Toronto",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "MTS RU",
+    "mccmnc": "25001",
+    "country": "Russia",
+    "lat": 55.7558,
+    "long": 37.6173,
+    "timezone": "Europe/Moscow",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "MegaFon",
+    "mccmnc": "25002",
+    "country": "Russia",
+    "lat": 55.7558,
+    "long": 37.6173,
+    "timezone": "Europe/Moscow",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Beeline RU",
+    "mccmnc": "25099",
+    "country": "Russia",
+    "lat": 55.7558,
+    "long": 37.6173,
+    "timezone": "Europe/Moscow",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Orange EG",
+    "mccmnc": "60201",
+    "country": "Egypt",
+    "lat": 30.0444,
+    "long": 31.2357,
+    "timezone": "Africa/Cairo",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Vodafone EG",
+    "mccmnc": "60202",
+    "country": "Egypt",
+    "lat": 30.0444,
+    "long": 31.2357,
+    "timezone": "Africa/Cairo",
+    "networkType": "LTE"
+  },
+  {
+    "carrier": "Etisalat EG",
+    "mccmnc": "60203",
+    "country": "Egypt",
+    "lat": 30.0444,
+    "long": 31.2357,
+    "timezone": "Africa/Cairo",
     "networkType": "LTE"
   }
 ]
