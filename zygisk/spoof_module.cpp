@@ -74,6 +74,8 @@ struct DeviceInfo {
     std::string ram_gb;
     std::string usb_debugging;
     bool sim_spoof_enabled = false;
+    std::string wifi_ssid;
+    std::string media_drm_id;
     std::string build_host;
     std::string build_user;
     std::string build_tags;
@@ -238,7 +240,9 @@ private:
                     spoof_info.sim_carrier = sg.value("SIM_CARRIER", "");
                     spoof_info.gps_lat = sg.value("GPS_LAT", "");
                     spoof_info.gps_long = sg.value("GPS_LONG", "");
-                    spoof_info.gps_timezone = sg.value("GPS_TIMEZONE", "");
+                                    spoof_info.gps_timezone = sg.value("GPS_TIMEZONE", "");
+                spoof_info.wifi_ssid = sg.value("WIFI_SSID", "");
+                spoof_info.media_drm_id = sg.value("MEDIA_DRM_ID", "");
                 }
                 if (device.contains("TIMESTAMP")) {
                     const auto& device_timestamp = device["TIMESTAMP"];
@@ -394,7 +398,20 @@ private:
             }
             sp("ro.build.host", spoof_info.build_host);
             sp("ro.build.user", spoof_info.build_user);
-            sp("ro.build.tags", spoof_info.build_tags);
+                        sp("ro.build.tags", spoof_info.build_tags);
+            // Wi-Fi SSID spoofing
+            if (!spoof_info.wifi_ssid.empty()) {
+                sp("wifi.interface", "wlan0");
+                std::string ssidPath = "/data/misc/wifi/wpa_supplicant.conf";
+                // Set via sysprop for apps reading it
+                sp("net.hostname", spoof_info.wifi_ssid);
+                sp("persist.sys.wifi_ssid", spoof_info.wifi_ssid);
+            }
+            // MediaDrm / Widevine ID
+            if (!spoof_info.media_drm_id.empty()) {
+                sp("media.drm.id", spoof_info.media_drm_id);
+                sp("persist.sys.media_drm_id", spoof_info.media_drm_id);
+            }
         }
         // === Additional telephony properties ===
         if (spoof_info.sim_spoof_enabled) {
