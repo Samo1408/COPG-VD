@@ -447,31 +447,20 @@ private:
     }
 
 public:
-    // === Static hook data (filled in onLoad, used in preAppSpecialize) ===
+    // === Storage for data shared across processes ===
     static std::string s_wifi_ssid;
     static std::string s_media_drm_id;
     static std::string s_sim_iso;
     static std::string s_sim_carrier;
     static std::string s_sim_mccmnc;
     static bool s_sim_spoof_enabled;
-    
-    // Hooked native methods for WiFi
-    static jstring hooked_getSSID(JNIEnv* env, jobject /* thiz */) {
-        if (!s_wifi_ssid.empty()) {
-            return env->NewStringUTF(s_wifi_ssid.c_str());
-        }
-        return env->NewStringUTF("");
-    }
 
+    // preAppSpecialize: set sysprops per-app (LSPosed handles Java hooks)
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
-        if (s_sim_spoof_enabled) {
-            // Hook WifiInfo.getSSID() native method
-            if (!s_wifi_ssid.empty()) {
-                JNINativeMethod wifiMethods[] = {
-                    {"getSSID", "()Ljava/lang/String;", (void*)hooked_getSSID}
-                };
-                api->hookJniNativeMethods(env, "android/net/wifi/WifiInfo", wifiMethods, 1);
-            }
+        if (!s_sim_spoof_enabled) return;
+        // Sysprops that need to be set per-process (not global)
+        if (!s_wifi_ssid.empty()) {
+            __system_property_set("net.hostname", s_wifi_ssid.c_str());
         }
     }
 
@@ -481,7 +470,7 @@ public:
 
         spoofDevice();
 
-        // Save config to static members for preAppSpecialize hooks
+        // Cache for preAppSpecialize
         s_wifi_ssid = spoof_info.wifi_ssid;
         s_media_drm_id = spoof_info.media_drm_id;
         s_sim_iso = spoof_info.sim_iso;
