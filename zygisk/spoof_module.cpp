@@ -396,6 +396,36 @@ private:
             sp("ro.build.user", spoof_info.build_user);
             sp("ro.build.tags", spoof_info.build_tags);
         }
+        // === Additional telephony properties ===
+        if (spoof_info.sim_spoof_enabled) {
+            // persist.radio.country_code, persist.radio.country_iso
+            sp("persist.radio.country_code", spoof_info.sim_iso);
+            sp("persist.radio.country_iso", spoof_info.sim_iso);
+            sp("ro.product.locale.region", spoof_info.sim_iso);
+            
+            // ro.hardware.chipname (Samsung) - use baseband as chip hint
+            if (!spoof_info.baseband_version.empty()) {
+                sp("ro.hardware.chipname", spoof_info.baseband_version.substr(0, 
+                    spoof_info.baseband_version.find('-') != std::string::npos ? 
+                    spoof_info.baseband_version.find('-') : spoof_info.baseband_version.length()));
+            }
+            
+            // ro.soc.manufacturer, ro.soc.model
+            sp("ro.soc.manufacturer", spoof_info.manufacturer);
+            sp("ro.soc.model", spoof_info.hardware);
+            
+            // Airplane mode - always off
+            sp("persist.sys.airplane_mode", "off");
+            __system_property_set("persist.radio.airplane_mode_on", "0");
+            
+            // Hide developer mode when USB debugging = 0
+            if (spoof_info.usb_debugging == "0") {
+                __system_property_set("persist.sys.usb.config", "none");
+                sp("sys.usb.config", "none");
+                sp("sys.usb.state", "none");
+            }
+        }
+        
         env->DeleteLocalRef(buildClass);
         if (versionClass) env->DeleteLocalRef(versionClass);
     }
