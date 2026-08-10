@@ -4,7 +4,7 @@
 
 ENABLE_GPHOTO_SPOOF=false
 CONFIG_FILE="/data/adb/COPG-VD.json"
-CONFLICT_MODULES="COPG playintegrity playintegrityfix integrity-*box"
+CONFLICT_MODULES="COPG integrity-*box"
 
 print_box_start() {
   ui_print "╔═════════════════════════════════╗"
