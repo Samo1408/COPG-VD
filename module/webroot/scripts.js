@@ -56,7 +56,6 @@ const templates = {
                                                            Bootloader: ${escapeHtml(data.bootloader)}<br>
                                                            Hardware: ${escapeHtml(data.hardware)}<br>
                                                            Baseband: ${escapeHtml(data.baseband)}<br>
-                                                           USB Debugging: ${escapeHtml(data.usb_debugging)}<br>
                                                            ID: ${escapeHtml(data.id)}<br>
                                                            Display: ${escapeHtml(data.display)}<br>
                                                            HOST: ${escapeHtml(data.host)}<br>
@@ -1114,6 +1113,7 @@ async function saveDevice(e) {
     const bootloader = document.getElementById('device-bootloader').value.trim() || 'Undefined';
     const hardware = document.getElementById('device-hardware').value.trim() || 'Undefined';
     const baseband = document.getElementById('device-baseband').value.trim() || 'Undefined';
+    const usb_debugging = document.getElementById('device-usb-debugging') ? document.getElementById('device-usb-debugging').value.trim() || '0' : '0';
     const id = document.getElementById('device-id').value.trim() || 'Undefined';
     const display = document.getElementById('device-display').value.trim() || 'Undefined';
     const host = document.getElementById('device-host').value.trim() || 'Undefined';
@@ -1129,7 +1129,6 @@ async function saveDevice(e) {
     const codename = document.getElementById('device-codename').value.trim() || 'Undefined';
     const user = document.getElementById('device-user').value.trim() || 'Undefined';
     const sdk_fingerprint = document.getElementById('device-sdk_fingerprint').value.trim() || 'Undefined';
-    const usb_debugging = document.getElementById('device-usb-debugging') ? document.getElementById('device-usb-debugging').value.trim() || '0' : '0';
     
     const deviceData = {
         BRAND: brand,
@@ -1142,6 +1141,7 @@ async function saveDevice(e) {
         BOOTLOADER: bootloader,
         HARDWARE: hardware,
         BASEBAND: baseband,
+        USB_DEBUGGING: usb_debugging,
         ID: id,
         DISPLAY: display,
         HOST: host,
@@ -1152,8 +1152,7 @@ async function saveDevice(e) {
         SDK_FULL: sdk_full,
         CODENAME: codename,
         USER: user,
-        SDK_FINGERPRINT: sdk_fingerprint,
-        USB_DEBUGGING: usb_debugging
+        SDK_FINGERPRINT: sdk_fingerprint
     };
     
     if (androidVersion) {
@@ -1184,164 +1183,15 @@ async function saveDevice(e) {
     }
 }
 
-// ==================== Random Device Fill ====================
 let devicesDb = [];
-
-async function loadDevicesDb() {
-    try {
-        const resp = await fetch('devices.json');
-        if (resp.ok) {
-            devicesDb = await resp.json();
-        }
-    } catch (e) {
-        console.warn('Could not load devices.json:', e);
-    }
-}
-
-function fillRandomDevice() {
-    if (!devicesDb.length) {
-        appendToOutput('No device profiles available in devices.json', 'error');
-        return;
-    }
-    const rand = devicesDb[Math.floor(Math.random() * devicesDb.length)];
-    const p = rand.profile;
-
-    document.getElementById('device-name').value = p.deviceCode || '';
-    document.getElementById('device-brand').value = p.brand || '';
-    document.getElementById('device-model').value = p.model || '';
-    document.getElementById('device-product').value = p.productName || '';
-    document.getElementById('device-manufacturer').value = p.manufacturer || '';
-    document.getElementById('device-fingerprint').value = p.buildFingerprint || '';
-    document.getElementById('device-board').value = p.board || '';
-    document.getElementById('device-bootloader').value = p.bootloader || '';
-    document.getElementById('device-hardware').value = p.hardware || '';
-    document.getElementById('device-baseband').value = p.baseband || '';
-    document.getElementById('device-id').value = p.buildId || '';
-    document.getElementById('device-display').value = p.buildDisplayId || '';
-    // host from buildDescription
-    document.getElementById('device-host').value = p.buildFlavor || p.buildDescription || '';
-    document.getElementById('device-incremental').value = p.buildIncremental || '';
-    document.getElementById('device-security_patch').value = p.securityPatch || '';
-    document.getElementById('device-preview_sdk').value = p.buildCharacteristics || '';
-    document.getElementById('device-sdk_full').value = p.socModel || '';
-    document.getElementById('device-codename').value = p.buildProduct || '';
-    document.getElementById('device-user').value = (p.buildDescription || '').split(' ')[1] || '';
-    document.getElementById('device-sdk_fingerprint').value = p.buildFingerprint || '';
-    document.getElementById('device-sdk-int').value = '';
-    document.getElementById('device-android-version').value = '';
-
-    appendToOutput(`Random device: ${rand.brandLabel} ${rand.modelLabel}`, 'info');
-}
-
-// ==================== Sim / GPS Spoof ====================
-let carriersDb = [];
-
-async function loadCarriersDb() {
-    try {
-        const resp = await fetch('carriers.json');
-        if (resp.ok) {
-            carriersDb = await resp.json();
-            populateCarrierSelect();
-        }
-    } catch (e) {
-        console.warn('Could not load carriers.json:', e);
-    }
-}
-
-function populateCarrierSelect() {
-    const select = document.getElementById('sim-carrier-select');
-    if (!select) return;
-    select.innerHTML = '<option value="">-- Select a carrier --</option>';
-    carriersDb.forEach((c, i) => {
-        const opt = document.createElement('option');
-        opt.value = i;
-        opt.textContent = `${c.carrier} (${c.mccmnc}) - ${c.country}`;
-        select.appendChild(opt);
-    });
-}
-
-function onCarrierSelectChange() {
-    const select = document.getElementById('sim-carrier-select');
-    const idx = select.value;
-    if (idx === '') {
-        document.getElementById('sim-mccmnc').value = '';
-        document.getElementById('sim-country').value = '';
-        document.getElementById('gps-lat').value = '';
-        document.getElementById('gps-long').value = '';
-        document.getElementById('gps-timezone').value = '';
-        return;
-    }
-    const car = carriersDb[parseInt(idx)];
-    if (car) {
-        document.getElementById('sim-mccmnc').value = car.mccmnc;
-        document.getElementById('sim-country').value = car.country;
-        document.getElementById('gps-lat').value = car.lat;
-        document.getElementById('gps-long').value = car.long;
-        document.getElementById('gps-timezone').value = car.timezone;
-    }
-}
-
-async function applySimGpsSpoof() {
-    const carrierSelect = document.getElementById('sim-carrier-select');
-    const carrierIdx = carrierSelect.value;
-    const carrier = (carrierIdx !== '') ? carriersDb[parseInt(carrierIdx)] : null;
-    
-    const mccmnc = document.getElementById('sim-mccmnc').value.trim();
-    const country = document.getElementById('sim-country').value.trim();
-    const lat = document.getElementById('gps-lat').value.trim();
-    const lng = document.getElementById('gps-long').value.trim();
-    const tz = document.getElementById('gps-timezone').value.trim();
-    const simEnabled = document.getElementById('toggle-sim-spoof').checked;
-
-    const simGpsData = {
-        SIM_SPOOF_ENABLED: simEnabled,
-        SIM_MCCMNC: mccmnc || '',
-        SIM_COUNTRY: country || '',
-        SIM_CARRIER: carrier ? carrier.carrier : '',
-        GPS_LAT: lat || '',
-        GPS_LONG: lng || '',
-        GPS_TIMEZONE: tz || ''
-    };
-
-    // Also update the device BASEBAND to match carrier's country if carrier selected
-    if (carrier && simEnabled) {
-        const deviceData = currentConfig['COPG-VD'];
-        if (deviceData) {
-            deviceData.SIM_MCCMNC = mccmnc;
-            deviceData.SIM_COUNTRY = country;
-            deviceData.SIM_CARRIER = carrier.carrier;
-            deviceData.GPS_LAT = lat;
-            deviceData.GPS_LONG = lng;
-            deviceData.GPS_TIMEZONE = tz;
-            // Also store timezone as a property that can be applied
-            deviceData.PERSIST_SYS_TIMEZONE = tz;
-        }
-    }
-
-    try {
-        const simGpsKey = 'COPG-VD-SimGps';
-        currentConfig[simGpsKey] = simGpsData;
-        if (!configKeyOrder.includes(simGpsKey)) {
-            configKeyOrder.push(simGpsKey);
-        }
-        await saveConfig();
-        appendToOutput(`Sim/GPS spoof applied: ${carrier ? carrier.carrier + ' (' + mccmnc + ')' : mccmnc} @ ${lat},${lng} (${tz})`, 'success');
-    } catch (error) {
-        appendToOutput(`Failed to apply sim/gps: ${error}`, 'error');
-    }
-}
-
-function loadSimGpsState() {
-    const simGpsData = currentConfig['COPG-VD-SimGps'];
-    if (simGpsData) {
-        document.getElementById('toggle-sim-spoof').checked = simGpsData.SIM_SPOOF_ENABLED || false;
-        document.getElementById('sim-mccmnc').value = simGpsData.SIM_MCCMNC || '';
-        document.getElementById('sim-country').value = simGpsData.SIM_COUNTRY || '';
-        document.getElementById('gps-lat').value = simGpsData.GPS_LAT || '';
-        document.getElementById('gps-long').value = simGpsData.GPS_LONG || '';
-        document.getElementById('gps-timezone').value = simGpsData.GPS_TIMEZONE || '';
-    }
-}
+async function loadDevicesDb(){try{const r=await fetch('devices.json');if(r.ok)devicesDb=await r.json()}catch(e){console.warn('devices.json:',e)}}
+function fillRandomDevice(){if(!devicesDb.length){appendToOutput('No device profiles','error');return}const p=devicesDb[Math.floor(Math.random()*devicesDb.length)].profile;document.getElementById('device-name').value=p.deviceCode||'';document.getElementById('device-brand').value=p.brand||'';document.getElementById('device-model').value=p.model||'';document.getElementById('device-product').value=p.productName||'';document.getElementById('device-manufacturer').value=p.manufacturer||'';document.getElementById('device-fingerprint').value=p.buildFingerprint||'';document.getElementById('device-board').value=p.board||'';document.getElementById('device-bootloader').value=p.bootloader||'';document.getElementById('device-hardware').value=p.hardware||'';document.getElementById('device-baseband').value=p.baseband||'';document.getElementById('device-id').value=p.buildId||'';document.getElementById('device-display').value=p.buildDisplayId||'';document.getElementById('device-host').value=p.buildFlavor||p.buildDescription||'';document.getElementById('device-incremental').value=p.buildIncremental||'';document.getElementById('device-security_patch').value=p.securityPatch||'';document.getElementById('device-preview_sdk').value=p.buildCharacteristics||'';document.getElementById('device-sdk_full').value=p.socModel||'';document.getElementById('device-codename').value=p.buildProduct||'';document.getElementById('device-user').value=(p.buildDescription||'').split(' ')[1]||'';document.getElementById('device-sdk_fingerprint').value=p.buildFingerprint||'';document.getElementById('device-sdk-int').value='';document.getElementById('device-android-version').value=''}
+let carriersDb=[];
+async function loadCarriersDb(){try{const r=await fetch('carriers.json');if(r.ok){carriersDb=await r.json();populateCarrierSelect()}}catch(e){console.warn('carriers.json:',e)}}
+function populateCarrierSelect(){const s=document.getElementById('sim-carrier-select');if(!s)return;s.innerHTML='<option value="">-- Select a carrier --</option>';carriersDb.forEach(function(c,i){var o=document.createElement('option');o.value=i;o.textContent=c.carrier+' ('+c.mccmnc+') - '+c.country;s.appendChild(o)})}
+function onCarrierSelectChange(){var s=document.getElementById('sim-carrier-select');var i=s.value;if(i===''){document.getElementById('sim-mccmnc').value='';document.getElementById('sim-country').value='';document.getElementById('gps-lat').value='';document.getElementById('gps-long').value='';document.getElementById('gps-timezone').value='';return}var c=carriersDb[parseInt(i)];if(c){document.getElementById('sim-mccmnc').value=c.mccmnc;document.getElementById('sim-country').value=c.country;document.getElementById('gps-lat').value=c.lat;document.getElementById('gps-long').value=c.long;document.getElementById('gps-timezone').value=c.timezone}}
+async function applySimGpsSpoof(){var cs=document.getElementById('sim-carrier-select');var ci=cs.value;var car=(ci!=='')?carriersDb[parseInt(ci)]:null;var m=document.getElementById('sim-mccmnc').value.trim();var co=document.getElementById('sim-country').value.trim();var la=document.getElementById('gps-lat').value.trim();var lo=document.getElementById('gps-long').value.trim();var tz=document.getElementById('gps-timezone').value.trim();var en=document.getElementById('toggle-sim-spoof').checked;var d={SIM_SPOOF_ENABLED:en,SIM_MCCMNC:m||'',SIM_COUNTRY:co||'',SIM_CARRIER:car?car.carrier:'',GPS_LAT:la||'',GPS_LONG:lo||'',GPS_TIMEZONE:tz||''};if(car&&en){var dd=currentConfig['COPG-VD'];if(dd){dd.SIM_MCCMNC=m;dd.SIM_COUNTRY=co;dd.SIM_CARRIER=car.carrier;dd.GPS_LAT=la;dd.GPS_LONG=lo;dd.GPS_TIMEZONE=tz;dd.PERSIST_SYS_TIMEZONE=tz}}try{var k='COPG-VD-SimGps';currentConfig[k]=d;if(!configKeyOrder.includes(k))configKeyOrder.push(k);await saveConfig()}catch(e){appendToOutput('Failed: '+e,'error')}}
+function loadSimGpsState(){var d=currentConfig['COPG-VD-SimGps'];if(d){document.getElementById('toggle-sim-spoof').checked=d.SIM_SPOOF_ENABLED||false;document.getElementById('sim-mccmnc').value=d.SIM_MCCMNC||'';document.getElementById('sim-country').value=d.SIM_COUNTRY||'';document.getElementById('gps-lat').value=d.GPS_LAT||'';document.getElementById('gps-long').value=d.GPS_LONG||'';document.getElementById('gps-timezone').value=d.GPS_TIMEZONE||''}}
 
 async function saveConfig() {
     try {
@@ -1697,45 +1547,7 @@ function applyEventListeners() {
         if (popup) closePopup(popup.id);
     }));
 
-    document.getElementById('device-form').addEventListener('submit', saveDevice);
-
-    // Random device button
-    const randomBtn = document.getElementById('random-device-btn');
-    if (randomBtn) {
-        randomBtn.addEventListener('click', fillRandomDevice);
-    }
-
-    // Sim/GPS tab switching inside device tab
-    const tabDeviceProfile = document.getElementById('tab-device-profile');
-    const tabSimGps = document.getElementById('tab-sim-gps-spoof');
-    if (tabDeviceProfile) {
-        tabDeviceProfile.addEventListener('click', () => {
-            tabDeviceProfile.classList.add('active');
-            tabSimGps.classList.remove('active');
-            document.getElementById('device-profile-section').classList.add('active');
-            document.getElementById('sim-gps-section').classList.remove('active');
-        });
-    }
-    if (tabSimGps) {
-        tabSimGps.addEventListener('click', () => {
-            tabSimGps.classList.add('active');
-            tabDeviceProfile.classList.remove('active');
-            document.getElementById('sim-gps-section').classList.add('active');
-            document.getElementById('device-profile-section').classList.remove('active');
-        });
-    }
-
-    // Carrier select change
-    const carrierSelect = document.getElementById('sim-carrier-select');
-    if (carrierSelect) {
-        carrierSelect.addEventListener('change', onCarrierSelectChange);
-    }
-
-    // Apply Sim/GPS button
-    const applyBtn = document.getElementById('apply-sim-gps');
-    if (applyBtn) {
-        applyBtn.addEventListener('click', applySimGpsSpoof);
-    }
+    document.getElementById('device-form').addEventListener('submit', saveDevice);var rb=document.getElementById('random-device-btn');if(rb)rb.addEventListener('click',fillRandomDevice);var tp=document.getElementById('tab-device-profile');var ts=document.getElementById('tab-sim-gps-spoof');if(tp)tp.addEventListener('click',function(){tp.classList.add('active');ts.classList.remove('active');document.getElementById('device-profile-section').classList.add('active');document.getElementById('sim-gps-section').classList.remove('active')});if(ts)ts.addEventListener('click',function(){ts.classList.add('active');tp.classList.remove('active');document.getElementById('sim-gps-section').classList.add('active');document.getElementById('device-profile-section').classList.remove('active')});var cs=document.getElementById('sim-carrier-select');if(cs)cs.addEventListener('change',onCarrierSelectChange);var ab=document.getElementById('apply-sim-gps');if(ab)ab.addEventListener('click',applySimGpsSpoof);
 
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
