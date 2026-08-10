@@ -1,4 +1,3 @@
-JS_START
 let configKeyOrder = [];
 let currentConfig = {};
 let editingDevice = null;
@@ -2137,4 +2136,3 @@ function setupBackupListeners() {
         });
     }
 }
-JS_END
