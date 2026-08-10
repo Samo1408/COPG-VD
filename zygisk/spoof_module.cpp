@@ -430,9 +430,10 @@ private:
             
             // ro.hardware.chipname (Samsung) - use baseband as chip hint
             if (!spoof_info.baseband_version.empty()) {
-                sp("ro.hardware.chipname", spoof_info.baseband_version.substr(0, 
-                    spoof_info.baseband_version.find('-') != std::string::npos ? 
-                    spoof_info.baseband_version.find('-') : spoof_info.baseband_version.length()));
+                std::string chip = spoof_info.baseband_version;
+                size_t dash = chip.find('-');
+                if (dash != std::string::npos) chip = chip.substr(0, dash);
+                sp("ro.hardware.chipname", chip);
             }
             
             // ro.soc.manufacturer, ro.soc.model
@@ -443,12 +444,7 @@ private:
             sp("persist.sys.airplane_mode", "off");
             __system_property_set("persist.radio.airplane_mode_on", "0");
             
-            // Hide developer mode when USB debugging = 0
-            if (spoof_info.usb_debugging == "0") {
-                __system_property_set("persist.sys.usb.config", "none");
-                sp("sys.usb.config", "none");
-                sp("sys.usb.state", "none");
-            }
+            // Developer mode hidden via USB config already set above
         }
         
         env->DeleteLocalRef(buildClass);
