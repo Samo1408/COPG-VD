@@ -66,7 +66,7 @@ struct DeviceInfo {
     std::string sim_mccmnc, sim_country, sim_iso, sim_carrier;
     std::string gps_lat, gps_long, gps_timezone;
     std::string baseband_version, ram_gb, usb_debugging;
-    std::string wifi_ssid, media_drm_id;
+    std::string wifi_ssid, media_drm_id, media_drm_level;
     bool sim_spoof_enabled = false;
 };
 
@@ -228,7 +228,8 @@ private:
                     spoof_info.gps_long = sg.value("GPS_LONG", "");
                     spoof_info.gps_timezone = sg.value("GPS_TIMEZONE", "");
                     spoof_info.wifi_ssid = sg.value("WIFI_SSID", "");
-                    spoof_info.media_drm_id = sg.value("MEDIA_DRM_ID", "");
+                                    spoof_info.media_drm_id = sg.value("MEDIA_DRM_ID", "");
+                spoof_info.media_drm_level = sg.value("MEDIA_DRM_LEVEL", "L3");
                 }
                 if (device.contains("TIMESTAMP")) {
                     const auto& device_timestamp = device["TIMESTAMP"];
@@ -417,10 +418,30 @@ private:
                 sp("net.hostname", spoof_info.wifi_ssid);
                 sp("persist.sys.wifi_ssid", spoof_info.wifi_ssid);
             }
-            // MediaDrm
+            // MediaDrm / Widevine
             if (!spoof_info.media_drm_id.empty()) {
                 sp("media.drm.id", spoof_info.media_drm_id);
                 sp("persist.sys.media_drm_id", spoof_info.media_drm_id);
+                // Widevine security level
+                if (spoof_info.media_drm_level == "L1") {
+                    sp("media.drm.security.level", "L1");
+                    sp("persist.sys.widevine_level", "L1");
+                } else if (spoof_info.media_drm_level == "L2") {
+                    sp("media.drm.security.level", "L2");
+                    sp("persist.sys.widevine_level", "L2");
+                } else {
+                    sp("media.drm.security.level", "L3");
+                    sp("persist.sys.widevine_level", "L3");
+                }
+            }
+            // /proc/cpuinfo Hardware spoofing
+            sp("ro.board.platform", spoof_info.board);
+            sp("ro.chipname", spoof_info.hardware);
+            sp("ro.hardware", spoof_info.hardware);
+            // /proc/meminfo RAM spoofing
+            if (!spoof_info.ram_gb.empty() && spoof_info.ram_gb != "12") {
+                sp("ro.config.totalmem", spoof_info.ram_gb);
+                sp("persist.sys.ram_size", spoof_info.ram_gb);
             }
         }
         
