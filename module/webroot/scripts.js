@@ -56,6 +56,7 @@ const templates = {
                                                            Bootloader: ${escapeHtml(data.bootloader)}<br>
                                                            Hardware: ${escapeHtml(data.hardware)}<br>
                                                            Baseband: ${escapeHtml(data.baseband)}<br>
+                                                           RAM: ${escapeHtml(data.ram_gb)} GB<br>
                                                            ID: ${escapeHtml(data.id)}<br>
                                                            Display: ${escapeHtml(data.display)}<br>
                                                            HOST: ${escapeHtml(data.host)}<br>
@@ -813,6 +814,7 @@ function renderDeviceList() {
             const fingerprint = currentConfig[key].FINGERPRINT || 'Undefined';
             const hardware = currentConfig[key].HARDWARE || 'Undefined';
             const baseband = currentConfig[key].BASEBAND || 'Undefined';
+            const ram_gb = currentConfig[key].RAM_GB || '12';
             const usb_debugging = currentConfig[key].USB_DEBUGGING || '0';
             const host = currentConfig[key].HOST || 'Undefined';
             const id = currentConfig[key].ID || 'Undefined';
@@ -839,6 +841,7 @@ function renderDeviceList() {
                 fingerprint: fingerprint,
                 hardware: hardware,
                 baseband: baseband,
+                ram_gb: ram_gb,
                 usb_debugging: usb_debugging,
                 host: host,
                 id: id,
@@ -918,9 +921,8 @@ function openDeviceModal(deviceKey = null) {
         document.getElementById('device-bootloader').value = deviceData.BOOTLOADER || '';
         document.getElementById('device-hardware').value = deviceData.HARDWARE || '';
         document.getElementById('device-baseband').value = deviceData.BASEBAND || '';
-        if (document.getElementById('device-usb-debugging')) {
-            document.getElementById('device-usb-debugging').value = deviceData.USB_DEBUGGING || '0';
-        }
+        document.getElementById('device-ram-gb').value = deviceData.RAM_GB || '12';
+        if(document.getElementById('device-usb-debugging'))document.getElementById('device-usb-debugging').value = deviceData.USB_DEBUGGING || '0';
         document.getElementById('device-id').value = deviceData.ID || '';
         document.getElementById('device-display').value = deviceData.DISPLAY || '';
         document.getElementById('device-host').value = deviceData.HOST || '';
@@ -1113,7 +1115,8 @@ async function saveDevice(e) {
     const bootloader = document.getElementById('device-bootloader').value.trim() || 'Undefined';
     const hardware = document.getElementById('device-hardware').value.trim() || 'Undefined';
     const baseband = document.getElementById('device-baseband').value.trim() || 'Undefined';
-    const usb_debugging = document.getElementById('device-usb-debugging') ? document.getElementById('device-usb-debugging').value.trim() || '0' : '0';
+    const ram_gb = document.getElementById('device-ram-gb').value.trim() || '12';
+    const usb_debugging = document.getElementById('device-usb-debugging')?document.getElementById('device-usb-debugging').value.trim()||'0':'0';
     const id = document.getElementById('device-id').value.trim() || 'Undefined';
     const display = document.getElementById('device-display').value.trim() || 'Undefined';
     const host = document.getElementById('device-host').value.trim() || 'Undefined';
@@ -1141,6 +1144,7 @@ async function saveDevice(e) {
         BOOTLOADER: bootloader,
         HARDWARE: hardware,
         BASEBAND: baseband,
+        RAM_GB: ram_gb,
         USB_DEBUGGING: usb_debugging,
         ID: id,
         DISPLAY: display,
@@ -1182,17 +1186,39 @@ async function saveDevice(e) {
         appendToOutput(`Failed to save device: ${error}`, 'error');
     }
 }
-
-let devicesDb = [];
-async function loadDevicesDb(){try{const r=await fetch('devices.json');if(r.ok)devicesDb=await r.json()}catch(e){console.warn('devices.json:',e)}}
-function fillRandomDevice(){if(!devicesDb.length){appendToOutput('No device profiles','error');return}const p=devicesDb[Math.floor(Math.random()*devicesDb.length)].profile;document.getElementById('device-name').value=p.deviceCode||'';document.getElementById('device-brand').value=p.brand||'';document.getElementById('device-model').value=p.model||'';document.getElementById('device-product').value=p.productName||'';document.getElementById('device-manufacturer').value=p.manufacturer||'';document.getElementById('device-fingerprint').value=p.buildFingerprint||'';document.getElementById('device-board').value=p.board||'';document.getElementById('device-bootloader').value=p.bootloader||'';document.getElementById('device-hardware').value=p.hardware||'';document.getElementById('device-baseband').value=p.baseband||'';document.getElementById('device-id').value=p.buildId||'';document.getElementById('device-display').value=p.buildDisplayId||'';document.getElementById('device-host').value=p.buildFlavor||p.buildDescription||'';document.getElementById('device-incremental').value=p.buildIncremental||'';document.getElementById('device-security_patch').value=p.securityPatch||'';document.getElementById('device-preview_sdk').value=p.buildCharacteristics||'';document.getElementById('device-sdk_full').value=p.socModel||'';document.getElementById('device-codename').value=p.buildProduct||'';document.getElementById('device-user').value=(p.buildDescription||'').split(' ')[1]||'';document.getElementById('device-sdk_fingerprint').value=p.buildFingerprint||'';document.getElementById('device-sdk-int').value='';document.getElementById('device-android-version').value=''}
+let devicesDb=[];
+async function loadDevicesDb(){try{const r=await fetch('devices.json');if(r.ok)devicesDb=await r.json()}catch(e){}}
+function fillRandomDevice(){if(!devicesDb.length){appendToOutput('No device profiles','error');return}
+const p=devicesDb[Math.floor(Math.random()*devicesDb.length)].profile;
+document.getElementById('device-name').value=p.deviceCode||'';
+document.getElementById('device-brand').value=p.brand||'';
+document.getElementById('device-model').value=p.model||'';
+document.getElementById('device-product').value=p.productName||'';
+document.getElementById('device-manufacturer').value=p.manufacturer||'';
+document.getElementById('device-fingerprint').value=p.buildFingerprint||'';
+document.getElementById('device-board').value=p.board||'';
+document.getElementById('device-bootloader').value=p.bootloader||'';
+document.getElementById('device-hardware').value=p.hardware||'';
+document.getElementById('device-baseband').value=p.baseband||'';
+document.getElementById('device-ram-gb').value='12';
+document.getElementById('device-id').value=p.buildId||'';
+document.getElementById('device-display').value=p.buildDisplayId||'';
+document.getElementById('device-host').value=p.buildFlavor||p.buildDescription||'';
+document.getElementById('device-incremental').value=p.buildIncremental||'';
+document.getElementById('device-security_patch').value=p.securityPatch||'';
+document.getElementById('device-preview_sdk').value=p.buildCharacteristics||'';
+document.getElementById('device-sdk_full').value=p.socModel||'';
+document.getElementById('device-codename').value=p.buildProduct||'';
+document.getElementById('device-user').value=(p.buildDescription||'').split(' ')[1]||'';
+document.getElementById('device-sdk_fingerprint').value=p.buildFingerprint||'';
+document.getElementById('device-sdk-int').value='';document.getElementById('device-android-version').value=''}
 let carriersDb=[];
-async function loadCarriersDb(){try{const r=await fetch('carriers.json');if(r.ok){carriersDb=await r.json();populateCarrierSelect()}}catch(e){console.warn('carriers.json:',e)}}
+async function loadCarriersDb(){try{const r=await fetch('carriers.json');if(r.ok){carriersDb=await r.json();populateCarrierSelect()}}catch(e){}}
 function populateCarrierSelect(){const s=document.getElementById('sim-carrier-select');if(!s)return;s.innerHTML='<option value="">-- Select a carrier --</option>';carriersDb.forEach(function(c,i){var o=document.createElement('option');o.value=i;o.textContent=c.carrier+' ('+c.mccmnc+') - '+c.country;s.appendChild(o)})}
-function onCarrierSelectChange(){var s=document.getElementById('sim-carrier-select');var i=s.value;if(i===''){document.getElementById('sim-mccmnc').value='';document.getElementById('sim-country').value='';document.getElementById('gps-lat').value='';document.getElementById('gps-long').value='';document.getElementById('gps-timezone').value='';return}var c=carriersDb[parseInt(i)];if(c){document.getElementById('sim-mccmnc').value=c.mccmnc;document.getElementById('sim-country').value=c.country;document.getElementById('gps-lat').value=c.lat;document.getElementById('gps-long').value=c.long;document.getElementById('gps-timezone').value=c.timezone}}
-async function applySimGpsSpoof(){var cs=document.getElementById('sim-carrier-select');var ci=cs.value;var car=(ci!=='')?carriersDb[parseInt(ci)]:null;var m=document.getElementById('sim-mccmnc').value.trim();var co=document.getElementById('sim-country').value.trim();var la=document.getElementById('gps-lat').value.trim();var lo=document.getElementById('gps-long').value.trim();var tz=document.getElementById('gps-timezone').value.trim();var en=document.getElementById('toggle-sim-spoof').checked;var d={SIM_SPOOF_ENABLED:en,SIM_MCCMNC:m||'',SIM_COUNTRY:co||'',SIM_CARRIER:car?car.carrier:'',GPS_LAT:la||'',GPS_LONG:lo||'',GPS_TIMEZONE:tz||''};if(car&&en){var dd=currentConfig['COPG-VD'];if(dd){dd.SIM_MCCMNC=m;dd.SIM_COUNTRY=co;dd.SIM_CARRIER=car.carrier;dd.GPS_LAT=la;dd.GPS_LONG=lo;dd.GPS_TIMEZONE=tz;dd.PERSIST_SYS_TIMEZONE=tz}}try{var k='COPG-VD-SimGps';currentConfig[k]=d;if(!configKeyOrder.includes(k))configKeyOrder.push(k);await saveConfig()}catch(e){appendToOutput('Failed: '+e,'error')}}
-function loadSimGpsState(){var d=currentConfig['COPG-VD-SimGps'];if(d){document.getElementById('toggle-sim-spoof').checked=d.SIM_SPOOF_ENABLED||false;document.getElementById('sim-mccmnc').value=d.SIM_MCCMNC||'';document.getElementById('sim-country').value=d.SIM_COUNTRY||'';document.getElementById('gps-lat').value=d.GPS_LAT||'';document.getElementById('gps-long').value=d.GPS_LONG||'';document.getElementById('gps-timezone').value=d.GPS_TIMEZONE||''}}
-
+function countryToIso(c){var m={'United States':'us','United Kingdom':'gb','Germany':'de','France':'fr','Saudi Arabia':'sa','United Arab Emirates':'ae','Turkey':'tr','Japan':'jp','China':'cn','India':'in','Mexico':'mx','Brazil':'br','Argentina':'ar','Australia':'au','South Korea':'kr','Canada':'ca','Russia':'ru','Egypt':'eg'};return m[c]||c.substring(0,2).toLowerCase()}
+function onCarrierSelectChange(){var s=document.getElementById('sim-carrier-select');var i=s.value;if(i===''){document.getElementById('sim-mccmnc').value='';document.getElementById('sim-country').value='';document.getElementById('sim-iso').value='';document.getElementById('gps-lat').value='';document.getElementById('gps-long').value='';document.getElementById('gps-timezone').value='';return}var c=carriersDb[parseInt(i)];if(c){document.getElementById('sim-mccmnc').value=c.mccmnc;document.getElementById('sim-country').value=c.country;document.getElementById('sim-iso').value=countryToIso(c.country);document.getElementById('gps-lat').value=c.lat;document.getElementById('gps-long').value=c.long;document.getElementById('gps-timezone').value=c.timezone}}
+async function applySimGpsSpoof(){var cs=document.getElementById('sim-carrier-select');var ci=cs.value;var car=(ci!=='')?carriersDb[parseInt(ci)]:null;var m=document.getElementById('sim-mccmnc').value.trim();var co=document.getElementById('sim-country').value.trim();var iso=document.getElementById('sim-iso').value.trim();var la=document.getElementById('gps-lat').value.trim();var lo=document.getElementById('gps-long').value.trim();var tz=document.getElementById('gps-timezone').value.trim();var en=document.getElementById('toggle-sim-spoof').checked;var d={SIM_SPOOF_ENABLED:en,SIM_MCCMNC:m||'',SIM_COUNTRY:co||'',SIM_ISO:iso||'',SIM_CARRIER:car?car.carrier:'',GPS_LAT:la||'',GPS_LONG:lo||'',GPS_TIMEZONE:tz||''};if(car&&en){var dd=currentConfig['COPG-VD'];if(dd){dd.SIM_MCCMNC=m;dd.SIM_COUNTRY=co;dd.SIM_ISO=iso;dd.SIM_CARRIER=car.carrier;dd.GPS_LAT=la;dd.GPS_LONG=lo;dd.GPS_TIMEZONE=tz;dd.PERSIST_SYS_TIMEZONE=tz;dd.BASEBAND=document.getElementById('device-baseband').value.trim()||dd.BASEBAND||'';dd.RAM_GB=document.getElementById('device-ram-gb').value.trim()||dd.RAM_GB||'12';dd.USB_DEBUGGING=document.getElementById('device-usb-debugging')?document.getElementById('device-usb-debugging').value:'0'}}try{var k='COPG-VD-SimGps';currentConfig[k]=d;if(!configKeyOrder.includes(k))configKeyOrder.push(k);await saveConfig();appendToOutput('Sim/GPS applied: '+(car?car.carrier+' ('+m+')':m)+' @ '+la+','+lo+' ('+tz+')','success')}catch(e){appendToOutput('Failed: '+e,'error')}}
+function loadSimGpsState(){var d=currentConfig['COPG-VD-SimGps'];if(d){document.getElementById('toggle-sim-spoof').checked=d.SIM_SPOOF_ENABLED||false;document.getElementById('sim-mccmnc').value=d.SIM_MCCMNC||'';document.getElementById('sim-country').value=d.SIM_COUNTRY||'';document.getElementById('sim-iso').value=d.SIM_ISO||'';document.getElementById('gps-lat').value=d.GPS_LAT||'';document.getElementById('gps-long').value=d.GPS_LONG||'';document.getElementById('gps-timezone').value=d.GPS_TIMEZONE||''}}
 async function saveConfig() {
     try {
         const orderedConfig = {};
@@ -1547,7 +1573,7 @@ function applyEventListeners() {
         if (popup) closePopup(popup.id);
     }));
 
-    document.getElementById('device-form').addEventListener('submit', saveDevice);var rb=document.getElementById('random-device-btn');if(rb)rb.addEventListener('click',fillRandomDevice);var tp=document.getElementById('tab-device-profile');var ts=document.getElementById('tab-sim-gps-spoof');if(tp)tp.addEventListener('click',function(){tp.classList.add('active');ts.classList.remove('active');document.getElementById('device-profile-section').classList.add('active');document.getElementById('sim-gps-section').classList.remove('active')});if(ts)ts.addEventListener('click',function(){ts.classList.add('active');tp.classList.remove('active');document.getElementById('sim-gps-section').classList.add('active');document.getElementById('device-profile-section').classList.remove('active')});var cs=document.getElementById('sim-carrier-select');if(cs)cs.addEventListener('change',onCarrierSelectChange);var ab=document.getElementById('apply-sim-gps');if(ab)ab.addEventListener('click',applySimGpsSpoof);
+    document.getElementById('device-form').addEventListener('submit',saveDevice);var rb=document.getElementById('random-device-btn');if(rb)rb.addEventListener('click',fillRandomDevice);var tp=document.getElementById('tab-device-profile');var ts=document.getElementById('tab-sim-gps-spoof');if(tp)tp.addEventListener('click',function(){tp.classList.add('active');ts.classList.remove('active');document.getElementById('device-profile-section').classList.add('active');document.getElementById('sim-gps-section').classList.remove('active')});if(ts)ts.addEventListener('click',function(){ts.classList.add('active');tp.classList.remove('active');document.getElementById('sim-gps-section').classList.add('active');document.getElementById('device-profile-section').classList.remove('active')});var cs=document.getElementById('sim-carrier-select');if(cs)cs.addEventListener('change',onCarrierSelectChange);var ab=document.getElementById('apply-sim-gps');if(ab)ab.addEventListener('click',applySimGpsSpoof);
 
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
