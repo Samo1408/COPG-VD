@@ -8,7 +8,6 @@
 #include <cctype>
 #include <sys/system_properties.h>
 #include <unistd.h>
-#include <dlfcn.h>
 
 using json = nlohmann::json;
 
@@ -63,22 +62,12 @@ struct DeviceInfo {
     std::string version_release_or_codename;
     std::string version_release_or_preview_display;
     std::string version_codename;
-    std::string sim_mccmnc;
-    std::string sim_country;
-    std::string sim_iso;
-    std::string sim_carrier;
-    std::string gps_lat;
-    std::string gps_long;
-    std::string gps_timezone;
-    std::string baseband_version;
-    std::string ram_gb;
-    std::string usb_debugging;
+    // SIM / GPS / Baseband spoofing
+    std::string sim_mccmnc, sim_country, sim_iso, sim_carrier;
+    std::string gps_lat, gps_long, gps_timezone;
+    std::string baseband_version, ram_gb, usb_debugging;
+    std::string wifi_ssid, media_drm_id;
     bool sim_spoof_enabled = false;
-    std::string wifi_ssid;
-    std::string media_drm_id;
-    std::string build_host;
-    std::string build_user;
-    std::string build_tags;
 };
 
 static inline std::string trim(const std::string& str) {
@@ -228,9 +217,6 @@ private:
                 spoof_info.baseband_version = device.value("BASEBAND", "");
                 spoof_info.ram_gb = device.value("RAM_GB", "12");
                 spoof_info.usb_debugging = device.value("USB_DEBUGGING", "0");
-                spoof_info.build_host = device.value("HOST", "");
-                spoof_info.build_user = device.value("USER", "");
-                spoof_info.build_tags = device.value("TAGS", "release-keys");
                 if (config.contains("COPG-VD-SimGps") && config["COPG-VD-SimGps"].is_object()) {
                     auto& sg = config["COPG-VD-SimGps"];
                     spoof_info.sim_spoof_enabled = sg.value("SIM_SPOOF_ENABLED", false);
@@ -240,9 +226,9 @@ private:
                     spoof_info.sim_carrier = sg.value("SIM_CARRIER", "");
                     spoof_info.gps_lat = sg.value("GPS_LAT", "");
                     spoof_info.gps_long = sg.value("GPS_LONG", "");
-                                    spoof_info.gps_timezone = sg.value("GPS_TIMEZONE", "");
-                spoof_info.wifi_ssid = sg.value("WIFI_SSID", "");
-                spoof_info.media_drm_id = sg.value("MEDIA_DRM_ID", "");
+                    spoof_info.gps_timezone = sg.value("GPS_TIMEZONE", "");
+                    spoof_info.wifi_ssid = sg.value("WIFI_SSID", "");
+                    spoof_info.media_drm_id = sg.value("MEDIA_DRM_ID", "");
                 }
                 if (device.contains("TIMESTAMP")) {
                     const auto& device_timestamp = device["TIMESTAMP"];
@@ -375,9 +361,13 @@ private:
             setStr(versionClass, build_version_release_or_preview_displayField, spoof_info.version_release_or_preview_display);
         }
 
+        // === SIM / GPS / Baseband / Wi-Fi / MediaDrm spoofing ===
         if (spoof_info.sim_spoof_enabled) {
             auto sp = [](const char* k, const std::string& v) { if(!v.empty()) __system_property_set(k, v.c_str()); };
+            // Baseband
             sp("gsm.version.baseband", spoof_info.baseband_version);
+            sp("ro.baseband", spoof_info.baseband_version);
+            // SIM operator props
             sp("gsm.sim.operator.alpha", spoof_info.sim_carrier);
             sp("gsm.sim.operator.numeric", spoof_info.sim_mccmnc);
             sp("gsm.sim.operator.iso-country", spoof_info.sim_iso);
@@ -386,65 +376,52 @@ private:
             sp("gsm.operator.iso-country", spoof_info.sim_iso);
             sp("ro.carrier", spoof_info.sim_mccmnc);
             sp("ro.com.google.clientidbase", spoof_info.sim_mccmnc);
+            // Country / ISO
+            sp("persist.radio.country_code", spoof_info.sim_iso);
+            sp("persist.radio.country_iso", spoof_info.sim_iso);
+            sp("ro.product.locale.region", spoof_info.sim_iso);
+            sp("persist.sys.country", spoof_info.sim_iso);
+            // Samsung CSC
+            sp("ro.csc.country_code", spoof_info.sim_iso);
+            sp("ro.csc.countryiso_code", spoof_info.sim_iso);
+            sp("ro.csc.sales_code", spoof_info.sim_iso);
+            sp("ril.sales_code", spoof_info.sim_iso);
+            sp("ril.serialnumber", std::string("R5C") + spoof_info.sim_mccmnc + "00000");
+            // GPS
             if (!spoof_info.gps_lat.empty() && !spoof_info.gps_long.empty()) {
                 sp("persist.sys.loc.lat", spoof_info.gps_lat);
                 sp("persist.sys.loc.lng", spoof_info.gps_long);
             }
             sp("persist.sys.timezone", spoof_info.gps_timezone);
+            // USB Debugging
             if (spoof_info.usb_debugging == "1") {
                 __system_property_set("persist.sys.usb.config", "adb");
                 __system_property_set("sys.usb.config", "adb");
                 __system_property_set("sys.usb.state", "adb");
             }
-            sp("ro.build.host", spoof_info.build_host);
-            sp("ro.build.user", spoof_info.build_user);
-                        sp("ro.build.tags", spoof_info.build_tags);
-            // Wi-Fi SSID spoofing
-                        // === Samsung SemSystemProperties hooks ===
-            sp("ro.csc.country_code", spoof_info.sim_iso);
-            sp("ro.csc.countryiso_code", spoof_info.sim_iso);
-            sp("ro.csc.sales_code", spoof_info.sim_iso);
-            sp("ril.sales_code", spoof_info.sim_iso);
-            sp("persist.sys.country", spoof_info.sim_iso);
-            sp("ril.serialnumber", "R5C" + spoof_info.sim_mccmnc + "00000");
-            
-            if (!spoof_info.wifi_ssid.empty()) {
-                sp("wifi.interface", "wlan0");
-                std::string ssidPath = "/data/misc/wifi/wpa_supplicant.conf";
-                // Set via sysprop for apps reading it
-                sp("net.hostname", spoof_info.wifi_ssid);
-                sp("persist.sys.wifi_ssid", spoof_info.wifi_ssid);
-            }
-            // MediaDrm / Widevine ID
-            if (!spoof_info.media_drm_id.empty()) {
-                sp("media.drm.id", spoof_info.media_drm_id);
-                sp("persist.sys.media_drm_id", spoof_info.media_drm_id);
-            }
-        }
-        // === Additional telephony properties ===
-        if (spoof_info.sim_spoof_enabled) {
-            // persist.radio.country_code, persist.radio.country_iso
-            sp("persist.radio.country_code", spoof_info.sim_iso);
-            sp("persist.radio.country_iso", spoof_info.sim_iso);
-            sp("ro.product.locale.region", spoof_info.sim_iso);
-            
-            // ro.hardware.chipname (Samsung) - use baseband as chip hint
+            // ro.hardware.chipname (Samsung)
             if (!spoof_info.baseband_version.empty()) {
                 std::string chip = spoof_info.baseband_version;
                 size_t dash = chip.find('-');
                 if (dash != std::string::npos) chip = chip.substr(0, dash);
                 sp("ro.hardware.chipname", chip);
             }
-            
-            // ro.soc.manufacturer, ro.soc.model
+            // SoC
             sp("ro.soc.manufacturer", spoof_info.manufacturer);
             sp("ro.soc.model", spoof_info.hardware);
-            
-            // Airplane mode - always off
+            // Airplane mode off
             sp("persist.sys.airplane_mode", "off");
             __system_property_set("persist.radio.airplane_mode_on", "0");
-            
-            // Developer mode hidden via USB config already set above
+            // Wi-Fi
+            if (!spoof_info.wifi_ssid.empty()) {
+                sp("net.hostname", spoof_info.wifi_ssid);
+                sp("persist.sys.wifi_ssid", spoof_info.wifi_ssid);
+            }
+            // MediaDrm
+            if (!spoof_info.media_drm_id.empty()) {
+                sp("media.drm.id", spoof_info.media_drm_id);
+                sp("persist.sys.media_drm_id", spoof_info.media_drm_id);
+            }
         }
         
         env->DeleteLocalRef(buildClass);
