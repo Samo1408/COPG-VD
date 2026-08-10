@@ -400,6 +400,14 @@ private:
             sp("ro.build.user", spoof_info.build_user);
                         sp("ro.build.tags", spoof_info.build_tags);
             // Wi-Fi SSID spoofing
+                        // === Samsung SemSystemProperties hooks ===
+            sp("ro.csc.country_code", spoof_info.sim_iso);
+            sp("ro.csc.countryiso_code", spoof_info.sim_iso);
+            sp("ro.csc.sales_code", spoof_info.sim_iso);
+            sp("ril.sales_code", spoof_info.sim_iso);
+            sp("persist.sys.country", spoof_info.sim_iso);
+            sp("ril.serialnumber", "R5C" + spoof_info.sim_mccmnc + "00000");
+            
             if (!spoof_info.wifi_ssid.empty()) {
                 sp("wifi.interface", "wlan0");
                 std::string ssidPath = "/data/misc/wifi/wpa_supplicant.conf";

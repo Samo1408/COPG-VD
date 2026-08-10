@@ -16,7 +16,6 @@ endif()
 set(ZYGISK_SOURCES
     spoof_module.cpp
     atexit.cpp
-    sem_hooks.cpp
 )
 
 add_library(spoof SHARED ${ZYGISK_SOURCES})
