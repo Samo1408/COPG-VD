@@ -40,6 +40,7 @@
                 Bootloader: [BOOTLOADER]
                 Hardware: [HARDWARE]
                 Baseband: [BASEBAND]
+                USB Debugging: [USB_DEBUG]
                 ID: [ID]
                 Display: [DISPLAY]
                 HOST: [HOST]
@@ -473,6 +474,15 @@
                             Baseband<span class="optional-badge">optional</span>
                         </label>
                         <input type="text" id="device-baseband" placeholder="e.g., g5500a-260218-B-13400050">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-usb-debugging">
+                            USB Debugging<span class="optional-badge">optional</span>
+                        </label>
+                        <select id="device-usb-debugging" class="version-select">
+                            <option value="0">0 - Disabled</option>
+                            <option value="1">1 - Enabled</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="device-id">
