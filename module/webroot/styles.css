@@ -2664,3 +2664,53 @@ input:checked ~ .slider {
     font-size: 0.72rem;
     margin-top: 2px;
 }
+
+/* ========== Sim / GPS Spoof ========== */
+.tab-nav-device-extra {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surfaceContainer);
+}
+.tab-nav-device-extra .tab-btn {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+.tab-nav-device-extra .tab-btn.active {
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+}
+.section-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0 8px;
+}
+#sim-carrier-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: var(--card-bg);
+    color: var(--text);
+    cursor: pointer;
+}
+#random-device-btn {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+#random-device-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+}
