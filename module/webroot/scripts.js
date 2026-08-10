@@ -56,6 +56,7 @@ const templates = {
                                                            Bootloader: ${escapeHtml(data.bootloader)}<br>
                                                            Hardware: ${escapeHtml(data.hardware)}<br>
                                                            Baseband: ${escapeHtml(data.baseband)}<br>
+                                                           USB Debugging: ${escapeHtml(data.usb_debugging)}<br>
                                                            ID: ${escapeHtml(data.id)}<br>
                                                            Display: ${escapeHtml(data.display)}<br>
                                                            HOST: ${escapeHtml(data.host)}<br>
@@ -813,6 +814,7 @@ function renderDeviceList() {
             const fingerprint = currentConfig[key].FINGERPRINT || 'Undefined';
             const hardware = currentConfig[key].HARDWARE || 'Undefined';
             const baseband = currentConfig[key].BASEBAND || 'Undefined';
+            const usb_debugging = currentConfig[key].USB_DEBUGGING || '0';
             const host = currentConfig[key].HOST || 'Undefined';
             const id = currentConfig[key].ID || 'Undefined';
             const incremental = currentConfig[key].INCREMENTAL || 'Undefined';
@@ -838,6 +840,7 @@ function renderDeviceList() {
                 fingerprint: fingerprint,
                 hardware: hardware,
                 baseband: baseband,
+                usb_debugging: usb_debugging,
                 host: host,
                 id: id,
                 incremental: incremental,
@@ -916,6 +919,9 @@ function openDeviceModal(deviceKey = null) {
         document.getElementById('device-bootloader').value = deviceData.BOOTLOADER || '';
         document.getElementById('device-hardware').value = deviceData.HARDWARE || '';
         document.getElementById('device-baseband').value = deviceData.BASEBAND || '';
+        if (document.getElementById('device-usb-debugging')) {
+            document.getElementById('device-usb-debugging').value = deviceData.USB_DEBUGGING || '0';
+        }
         document.getElementById('device-id').value = deviceData.ID || '';
         document.getElementById('device-display').value = deviceData.DISPLAY || '';
         document.getElementById('device-host').value = deviceData.HOST || '';
@@ -1123,6 +1129,7 @@ async function saveDevice(e) {
     const codename = document.getElementById('device-codename').value.trim() || 'Undefined';
     const user = document.getElementById('device-user').value.trim() || 'Undefined';
     const sdk_fingerprint = document.getElementById('device-sdk_fingerprint').value.trim() || 'Undefined';
+    const usb_debugging = document.getElementById('device-usb-debugging') ? document.getElementById('device-usb-debugging').value.trim() || '0' : '0';
     
     const deviceData = {
         BRAND: brand,
@@ -1145,7 +1152,8 @@ async function saveDevice(e) {
         SDK_FULL: sdk_full,
         CODENAME: codename,
         USER: user,
-        SDK_FINGERPRINT: sdk_fingerprint
+        SDK_FINGERPRINT: sdk_fingerprint,
+        USB_DEBUGGING: usb_debugging
     };
     
     if (androidVersion) {
@@ -1210,14 +1218,17 @@ function fillRandomDevice() {
     document.getElementById('device-baseband').value = p.baseband || '';
     document.getElementById('device-id').value = p.buildId || '';
     document.getElementById('device-display').value = p.buildDisplayId || '';
-    document.getElementById('device-host').value = '';
+    // host from buildDescription
+    document.getElementById('device-host').value = p.buildFlavor || p.buildDescription || '';
     document.getElementById('device-incremental').value = p.buildIncremental || '';
     document.getElementById('device-security_patch').value = p.securityPatch || '';
-    document.getElementById('device-preview_sdk').value = '';
-    document.getElementById('device-sdk_full').value = '';
-    document.getElementById('device-codename').value = '';
-    document.getElementById('device-user').value = '';
-    document.getElementById('device-sdk_fingerprint').value = '';
+    document.getElementById('device-preview_sdk').value = p.buildCharacteristics || '';
+    document.getElementById('device-sdk_full').value = p.socModel || '';
+    document.getElementById('device-codename').value = p.buildProduct || '';
+    document.getElementById('device-user').value = (p.buildDescription || '').split(' ')[1] || '';
+    document.getElementById('device-sdk_fingerprint').value = p.buildFingerprint || '';
+    document.getElementById('device-sdk-int').value = '';
+    document.getElementById('device-android-version').value = '';
 
     appendToOutput(`Random device: ${rand.brandLabel} ${rand.modelLabel}`, 'info');
 }
@@ -1271,6 +1282,10 @@ function onCarrierSelectChange() {
 }
 
 async function applySimGpsSpoof() {
+    const carrierSelect = document.getElementById('sim-carrier-select');
+    const carrierIdx = carrierSelect.value;
+    const carrier = (carrierIdx !== '') ? carriersDb[parseInt(carrierIdx)] : null;
+    
     const mccmnc = document.getElementById('sim-mccmnc').value.trim();
     const country = document.getElementById('sim-country').value.trim();
     const lat = document.getElementById('gps-lat').value.trim();
@@ -1282,10 +1297,26 @@ async function applySimGpsSpoof() {
         SIM_SPOOF_ENABLED: simEnabled,
         SIM_MCCMNC: mccmnc || '',
         SIM_COUNTRY: country || '',
+        SIM_CARRIER: carrier ? carrier.carrier : '',
         GPS_LAT: lat || '',
         GPS_LONG: lng || '',
         GPS_TIMEZONE: tz || ''
     };
+
+    // Also update the device BASEBAND to match carrier's country if carrier selected
+    if (carrier && simEnabled) {
+        const deviceData = currentConfig['COPG-VD'];
+        if (deviceData) {
+            deviceData.SIM_MCCMNC = mccmnc;
+            deviceData.SIM_COUNTRY = country;
+            deviceData.SIM_CARRIER = carrier.carrier;
+            deviceData.GPS_LAT = lat;
+            deviceData.GPS_LONG = lng;
+            deviceData.GPS_TIMEZONE = tz;
+            // Also store timezone as a property that can be applied
+            deviceData.PERSIST_SYS_TIMEZONE = tz;
+        }
+    }
 
     try {
         const simGpsKey = 'COPG-VD-SimGps';
@@ -1294,7 +1325,7 @@ async function applySimGpsSpoof() {
             configKeyOrder.push(simGpsKey);
         }
         await saveConfig();
-        appendToOutput(`Sim/GPS spoof applied: ${mccmnc} @ ${lat},${lng} (${tz})`, 'success');
+        appendToOutput(`Sim/GPS spoof applied: ${carrier ? carrier.carrier + ' (' + mccmnc + ')' : mccmnc} @ ${lat},${lng} (${tz})`, 'success');
     } catch (error) {
         appendToOutput(`Failed to apply sim/gps: ${error}`, 'error');
     }
