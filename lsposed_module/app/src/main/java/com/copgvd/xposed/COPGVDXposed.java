@@ -1,58 +1,49 @@
 package com.copgvd.xposed;
 
-import android.util.Log;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.IXposedHookZygoteInit;
-import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
-import de.robv.android.xposed.XposedHelpers;
 
 /**
- * LSPosed entry point - hooks ALL app processes, not just system_server.
- * Key fix: use IXposedHookLoadPackage to hook EVERY app that loads,
- * not just the "android" package.
+ * COPG-VD LSPosed Module
+ * 
+ * ARCHITECTURE (same as vpnhide):
+ * - Scope: System Framework only
+ * - Hooks system_server services that apps query for device info
+ * - Apps receive spoofed data via normal Binder IPC - NO hooks in app process
+ * - Zero footprint in target apps
  */
 public class COPGVDXposed implements IXposedHookZygoteInit, IXposedHookLoadPackage {
 
-    private static final String TAG = "COPGVD";
+    private static boolean hooksInstalled = false;
 
     @Override
     public void initZygote(StartupParam param) {
-        SpoofConfig.get().reload();
-        XposedBridge.log("COPG-VD: initZygote - config loaded: " + SpoofConfig.get().isSpoofEnabled());
+        XposedBridge.log("COPG-VD: Zygote init");
     }
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
-        // Don't hook our own app
-        if (lpparam.packageName.equals("com.copgvd.xposed")) return;
+        // Hook ONLY in system_server (process name "android" with package "android")
+        if (!"android".equals(lpparam.processName) && !"system_server".equals(lpparam.processName)) {
+            return;
+        }
+        
+        // Install once
+        if (hooksInstalled) return;
+        hooksInstalled = true;
 
-        // Reload config periodically (first app load after boot)
+        XposedBridge.log("COPG-VD: Hooking in system_server");
         SpoofConfig.get().reload();
+        
+        if (!SpoofConfig.get().isSpoofEnabled()) {
+            XposedBridge.log("COPG-VD: Spoofing disabled, no hooks");
+            return;
+        }
 
-        // Always install hooks for ALL apps (not just system_server)
-        // This is the KEY FIX: hooks must be in every process that reads device info
-        installHooks(lpparam);
-    }
-
-    private void installHooks(XC_LoadPackage.LoadPackageParam lpparam) {
-        if (!SpoofConfig.get().isSpoofEnabled()) return;
-
-        try {
-            TelephonyHooks.install(lpparam);
-        } catch (Throwable t) { XposedBridge.log(TAG + ": Telephony err: " + t.getMessage()); }
-
-        try {
-            WifiHooks.install(lpparam);
-        } catch (Throwable t) { XposedBridge.log(TAG + ": WiFi err: " + t.getMessage()); }
-
-        try {
-            MediaDrmHooks.install(lpparam);
-        } catch (Throwable t) { XposedBridge.log(TAG + ": MediaDrm err: " + t.getMessage()); }
-
-        try {
-            BuildHooks.install(lpparam);
-        } catch (Throwable t) { XposedBridge.log(TAG + ": Build err: " + t.getMessage()); }
+        // Hook system services that apps use to read device info
+        SystemServiceHooks.install(lpparam);
+        XposedBridge.log("COPG-VD: All system_server hooks installed");
     }
 }

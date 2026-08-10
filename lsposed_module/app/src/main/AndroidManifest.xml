@@ -7,10 +7,13 @@
         android:label="COPG-VD Spoof"
         android:supportsRtl="true">
 
+        <!-- LSPosed/Xposed module -->
         <meta-data android:name="xposedmodule" android:value="true" />
         <meta-data android:name="xposeddescription"
-            android:value="COPG-VD Device Spoofing - Hooks all apps for device identity spoofing" />
+            android:value="COPG-VD Device Spoofing - Hooks system_server to spoof device identity for all apps. Zero footprint in target apps." />
         <meta-data android:name="xposedminversion" android:value="93" />
+        <!-- Scope: System Framework only (hooks run in system_server, all apps benefit) -->
+        <meta-data android:name="xposedscope" android:resource="@array/xposed_scope" />
 
     </application>
 </manifest>
