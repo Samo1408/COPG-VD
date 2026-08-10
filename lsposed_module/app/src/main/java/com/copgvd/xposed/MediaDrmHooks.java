@@ -1,62 +1,63 @@
 package com.copgvd.xposed;
 
-import android.util.Log;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 public class MediaDrmHooks {
 
-    private static final String TAG = "COPGVD-MediaDrm";
-    private static final UUID WIDEVINE_UUID = UUID.fromString("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed");
-    private static final Map<String, byte[]> spoofedIds = new HashMap<>();
+    private static final UUID WIDEVINE = UUID.fromString("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed");
 
     public static void install(XC_LoadPackage.LoadPackageParam lpparam) {
         SpoofConfig cfg = SpoofConfig.get();
         if (!cfg.isSpoofEnabled()) return;
-        String drmId = cfg.getMediaDrmId();
-        if (drmId.isEmpty()) return;
 
-        spoofedIds.put(WIDEVINE_UUID.toString(), hexToBytes(drmId));
+        final String drmId = cfg.getMediaDrmId();
+        final String level = cfg.getMediaDrmLevel();
+        if (drmId.isEmpty() && level.isEmpty()) return;
 
-        Class<?> clazz = XposedHelpers.findClassIfExists(
+        Class<?> cls = XposedHelpers.findClassIfExists(
                 "android.media.MediaDrm", lpparam.classLoader);
-        if (clazz == null) { Log.w(TAG, "MediaDrm class not found"); return; }
+        if (cls == null) return;
 
         // Hook getPropertyByteArray for deviceUniqueId
-        try {
-            XposedHelpers.findAndHookMethod(clazz, "getPropertyByteArray",
+        if (!drmId.isEmpty()) {
+            try {
+                final byte[] idBytes = hexToBytes(drmId);
+                XposedHelpers.findAndHookMethod(cls, "getPropertyByteArray",
                     UUID.class, String.class, new XC_MethodHook() {
                         @Override
-                        protected void beforeHookedMethod(MethodHookParam param) {
-                            String prop = (String) param.args[1];
-                            String uuid = param.args[0].toString();
-                            if ("deviceUniqueId".equals(prop) && spoofedIds.containsKey(uuid)) {
-                                param.setResult(spoofedIds.get(uuid));
+                        protected void beforeHookedMethod(MethodHookParam p) {
+                            if ("deviceUniqueId".equals(p.args[1]) && WIDEVINE.equals(p.args[0])) {
+                                p.setResult(idBytes);
                             }
                         }
                     });
-            Log.i(TAG, "MediaDrm.getPropertyByteArray hooked");
-        } catch (Throwable t) { Log.e(TAG, "getPropertyByteArray hook failed", t); }
+                XposedBridge.log("COPGVD-DRM: ID hooked (" + drmId.length() + " hex chars)");
+            } catch (Throwable t) {
+                XposedBridge.log("COPGVD-DRM: getPropertyByteArray failed: " + t.getMessage());
+            }
+        }
 
         // Hook getPropertyString for securityLevel
-        try {
-            XposedHelpers.findAndHookMethod(clazz, "getPropertyString",
+        if (!level.isEmpty()) {
+            try {
+                XposedHelpers.findAndHookMethod(cls, "getPropertyString",
                     UUID.class, String.class, new XC_MethodHook() {
                         @Override
-                        protected void beforeHookedMethod(MethodHookParam param) {
-                            if ("securityLevel".equals(param.args[1])
-                                    && WIDEVINE_UUID.equals(param.args[0])) {
-                                String level = SpoofConfig.get().getMediaDrmLevel();
-                                if (!level.isEmpty()) param.setResult(level);
+                        protected void beforeHookedMethod(MethodHookParam p) {
+                            if ("securityLevel".equals(p.args[1]) && WIDEVINE.equals(p.args[0])) {
+                                p.setResult(level);
                             }
                         }
                     });
-            Log.i(TAG, "MediaDrm.getPropertyString hooked");
-        } catch (Throwable t) { Log.e(TAG, "getPropertyString hook failed", t); }
+                XposedBridge.log("COPGVD-DRM: securityLevel -> " + level);
+            } catch (Throwable t) {
+                XposedBridge.log("COPGVD-DRM: getPropertyString failed: " + t.getMessage());
+            }
+        }
     }
 
     private static byte[] hexToBytes(String hex) {
