@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#60A5FA" id="theme-color">
+    <title>COPG-VD</title>
+    <!-- Everything is served from inside the module. This page can run root commands
+         through ksu.exec, so it must never load code or content off the network.
+         The same policy lives in webroot/config.json, which only KernelSU's own WebUI
+         reads - KsuWebUIStandalone (what Magisk users run) ignores it and just serves
+         this directory, so without the meta tag those users would get no policy at all. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'">
+    <link rel="stylesheet" href="fonts.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="marked.min.js"></script>
+</head>
+<body>
+    <template id="device-card-template">
+        <div class="device-card" data-key="[KEY]" style="animation-delay: [DELAY]s">
+            <div class="device-header">
+                <h4 class="device-name">[DEVICE_NAME]</h4>
+                <div class="device-actions">
+                    <button class="edit-btn" data-device="[KEY]" title="Edit">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="device-details">
+                Model: [MODEL]
+                Name: [NAME]
+                Brand: [BRAND]
+                Product: [PRODUCT]
+                Manufacturer: [MANUFACTURER]
+                Fingerprint: [FINGERPRINT]
+                Board: [BOARD]
+                Bootloader: [BOOTLOADER]
+                Hardware: [HARDWARE]
+                Baseband: [BASEBAND]
+                RAM: [RAM_GB] GB
+                ID: [ID]
+                Display: [DISPLAY]
+                HOST: [HOST]
+                Android Version: [ANDROID-VERSION]
+                SDK: [SDK-INT]
+                Incremental: [INCREMENTAL]
+                Timestamp: [TIMESTAMP]
+                Preview SDK: [PREVIEW_SDK]
+                SDK Full: [SDK_FULL]
+                Codename: [CODENAME]
+                User: [USER]
+                SDK Fingerprint: [SDK_FINGERPRINT]
+                Security Patch: [SECURITY_PATCH]
+            </div>
+        </div>
+    </template>
+
+    <template id="directory-card-template">
+        <div class="app-card directory-card" data-path="[PATH]">
+            <div class="app-icon-container">
+                <div class="app-icon-placeholder folder-icon"></div>
+            </div>
+            <div class="app-info">
+                <div class="app-name">[DIR_NAME]</div>
+            </div>
+        </div>
+    </template>
+
+    <template id="file-card-template">
+        <div class="app-card" data-file="[FILE_NAME]" data-path="[FILE_PATH]">
+            <div class="app-icon-container">
+                <div class="app-icon-placeholder file-icon"></div>
+            </div>
+            <div class="app-info">
+                <div class="app-name">[FILE_NAME]</div>
+            </div>
+        </div>
+    </template>
+
+    <div class="container">
+        <div class="header">
+            <h1 class="header-title">COPG-VD <span class="version" id="version-text">0.0</span></h1>
+            <div class="header-actions">
+                <button id="donate-toggle" class="theme-btn" title="Support Developer">
+                    <span class="donate-icon">🎁</span>
+                </button>
+                <button id="theme-toggle" class="theme-btn" title="Toggle Theme">
+                    <span id="theme-icon">☀️</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="info-popup" class="popup">
+            <div class="popup-content info-popup-content">
+                <div class="modal-header">
+                    <h3>COPG-VD Module Info</h3>
+                </div>
+                <div class="tab-nav info-tab-nav">
+                    <button class="tab-btn active" data-tab="info-about">About</button>
+                    <button class="tab-btn" data-tab="info-readme">Readme</button>
+                    <button class="tab-btn" data-tab="info-license">License</button>
+                </div>
+                <div class="info-tab-container">
+                    <div id="info-about" class="info-tab-content active">
+                        <div class="about-grid">
+                            <div class="about-card">
+                                <div class="about-card-icon developer-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <div class="about-card-content">
+                                    <h4>Developer</h4>
+                                    <p class="info-link" data-link="https://github.com/VD171">
+                                        <span class="link-icon">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M9 19C4 20.5 4 16.5 2 16M16 22V18.13C16.04 17.65 15.94 17.17 15.71 16.75C15.48 16.33 15.13 16 14.69 15.78C17.05 15.55 19.45 14.82 19.45 10.89C19.44 9.55 18.91 8.28 18 7.4C18.38 6.29 18.38 5.11 18 4C18 4 16.91 3.65 15 5.2C13.44 4.82 11.78 4.82 10.22 5.2C8.29 3.65 7.2 4 7.2 4C6.82 5.11 6.82 6.29 7.2 7.4C6.27 8.28 5.74 9.55 5.75 10.89C5.75 14.82 8.15 15.55 10.51 15.81C10.07 16.04 9.72 16.37 9.5 16.8C9.28 17.23 9.18 17.72 9.22 18.21V22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </span>
+                                        VD171 & @AlirezaParsi
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="about-card">
+                                <div class="about-card-icon project-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M16 13H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M16 17H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M10 9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <div class="about-card-content">
+                                    <h4>Project</h4>
+                                    <p class="info-link" data-link="https://github.com/VD171/COPG-VD">
+                                        <span class="link-icon">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M18 13V19C18 19.5304 17.7893 20.0391 17.4142 20.4142C17.0391 20.7893 16.5304 21 16 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V8C3 7.46957 3.21071 6.96086 3.58579 6.58579C3.96086 6.21071 4.46957 6 5 6H11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                <path d="M15 3H21V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                <path d="M10 14L21 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </span>
+                                        GitHub Repository
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="about-card">
+                                <div class="about-card-icon community-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M21 11.5C21.0034 12.8199 20.6951 14.1219 20.1 15.3C19.3944 16.7118 18.3098 17.8992 16.9674 18.7293C15.6251 19.5594 14.0782 19.9994 12.5 20C11.1801 20.0035 9.87812 19.6951 8.7 19.1L3 21L4.9 15.3C4.30493 14.1219 3.99656 12.8199 4 11.5C4.00061 9.92179 4.44061 8.37488 5.27072 7.03258C6.10083 5.69028 7.28825 4.6056 8.7 3.90003C9.87812 3.30496 11.1801 2.99659 12.5 3.00003H13C15.0843 3.11502 17.053 3.99479 18.5291 5.47089C20.0052 6.94699 20.885 8.91568 21 11V11.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <div class="about-card-content">
+                                    <h4>Community</h4>
+                                    <div class="community-links">
+                                        <p class="info-link" data-link="https://t.me/VD_Priv8">
+                                            <span class="link-icon">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M21 5L2 12.5L9 13.5M21 5L18.5 21L9 13.5M21 5L9 13.5M9 13.5V19L12.5 15.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                            </span>
+                                            Telegram Channel
+                                        </p>
+                                        <p class="info-link" data-link="https://t.me/VD_Priv8">
+                                            <span class="link-icon">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                    <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                            </span>
+                                            Contact Developer
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="info-license" class="info-tab-content">
+                        <div class="markdown-container" id="license-content">Loading...</div>
+                    </div>
+                    <div id="info-readme" class="info-tab-content">
+                        <div class="markdown-container" id="readme-content">Loading...</div>
+                    </div>
+                </div>
+                <div class="popup-footer">
+                    <button class="cancel-btn close-info-btn">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="donate-popup" class="popup">
+            <div class="popup-content">
+                <div class="modal-header">
+                    <h3>Support Developer</h3>
+                </div>
+                <div class="popup-body">
+                    <div class="donate-message">
+                        <p>If you find this app helpful, consider supporting the developer:</p>
+                    </div>
+                    <div class="donate-options">
+                        <div class="donate-option">
+                            <div class="crypto-icon usdt-icon">
+                                <svg width="20" height="20" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                                    <g fill="none" fill-rule="evenodd">
+                                        <circle cx="16" cy="16" r="16" fill="#26A17B"/>
+                                        <path fill="#FFF" d="M17.922 17.383v-.002c-.11.008-.677.042-1.942.042-1.01 0-1.721-.03-1.971-.042v.003c-3.888-.171-6.79-.848-6.79-1.658 0-.809 2.902-1.486 6.79-1.66v2.644c.254.018.982.061 1.988.061 1.207 0 1.812-.05 1.925-.06v-2.643c3.88.173 6.775.85 6.775 1.658 0 .81-2.895 1.485-6.775 1.657m0-3.59v-2.366h5.414V7.819H8.595v3.608h5.414v2.365c-4.4.202-7.709 1.074-7.709 2.118 0 1.044 3.309 1.915 7.709 2.118v7.582h3.913v-7.584c4.393-.202 7.694-1.073 7.694-2.116 0-1.043-3.301-1.914-7.694-2.117"/>
+                                    </g>
+                                </svg>
+                            </div>
+                            <div class="donate-info">
+                                <h4>USDT (TRC-20)/TRON (TRX)</h4>
+                                <p class="donate-address">TMMDAyJ9Fs3yQpidd2Q4eYLTMkM1hsrauV</p>
+                            </div>
+                            <button class="copy-btn" data-address="TMMDAyJ9Fs3yQpidd2Q4eYLTMkM1hsrauV">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div class="donate-option">
+                            <div class="crypto-icon ton-icon">
+                                <svg width="20" height="20" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M28,56c15.5,0,28-12.5,28-28S43.5,0,28,0S0,12.5,0,28S12.5,56,28,56z" fill="#0098EA"/>
+                                    <path d="M37.6,15.6H18.4c-3.5,0-5.7,3.8-4,6.9l11.8,20.5c0.8,1.3,2.7,1.3,3.5,0l11.8-20.5 C43.3,19.4,41.1,15.6,37.6,15.6L37.6,15.6z M26.3,36.8l-2.6-5l-6.2-11.1c-0.4-0.7,0.1-1.6,1-1.6h7.8L26.3,36.8L26.3,36.8z M38.5,20.7l-6.2,11.1l-2.6,5V19.1h7.8C38.4,19.1,38.9,20,38.5,20.7z" fill="#FFFFFF"/>
+                                </svg>
+                            </div>
+                            <div class="donate-info">
+                                <h4>TON (TON)</h4>
+                                <p class="donate-address">UQDpCIV5E8O2uHg8TPr6PUf36BEDOAu42lr9YzJw2j7HONat</p>
+                            </div>
+                            <button class="copy-btn" data-address="UQDpCIV5E8O2uHg8TPr6PUf36BEDOAu42lr9YzJw2j7HONat">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div class="donate-option">
+                            <div class="crypto-icon telegram-icon">
+                                <svg width="20" height="20" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <g>
+                                        <path d="M128,0 C57.307,0 0,57.307 0,128 L0,128 C0,198.693 57.307,256 128,256 L128,256 C198.693,256 256,198.693 256,128 L256,128 C256,57.307 198.693,0 128,0 L128,0 Z" fill="#40B3E0"></path>
+                                        <path d="M190.2826,73.6308 L167.4206,188.8978 C167.4206,188.8978 164.2236,196.8918 155.4306,193.0548 L102.6726,152.6068 L83.4886,143.3348 L51.1946,132.4628 C51.1946,132.4628 46.2386,130.7048 45.7586,126.8678 C45.2796,123.0308 51.3546,120.9528 51.3546,120.9528 L179.7306,70.5928 C179.7306,70.5928 190.2826,65.9568 190.2826,73.6308" fill="#FFFFFF"></path>
+                                        <path d="M98.6178,187.6035 C98.6178,187.6035 97.0778,187.4595 95.1588,181.3835 C93.2408,175.3085 83.4888,143.3345 83.4888,143.3345 L161.0258,94.0945 C161.0258,94.0945 165.5028,91.3765 165.3428,94.0945 C165.3428,94.0945 166.1418,94.5735 163.7438,96.8115 C161.3458,99.0505 102.8328,151.6475 102.8328,151.6475" fill="#D2E5F1"></path>
+                                        <path d="M122.9015,168.1154 L102.0335,187.1414 C102.0335,187.1414 100.4025,188.3794 98.6175,187.6034 L102.6135,152.2624" fill="#B5CFE4"></path>
+                                    </g>
+                                </svg>
+                            </div>
+                            <div class="donate-info">
+                                <h4>Telegram Gifts</h4>
+                                <p class="donate-address">@AlirezaParsi</p>
+                            </div>
+                            <button class="copy-btn" data-address="@AlirezaParsi">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="popup-footer">
+                    <button class="action-btn close-donate-btn">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-nav">
+            <button id="tab-settings" class="tab-btn active">Settings</button>
+            <button id="tab-devices" class="tab-btn">Device</button>
+        </div>
+
+        <div class="tab-container" id="tab-container">
+            <div id="settings-tab" class="tab-content active">
+                <div class="card">
+                    <div class="scroll-container">
+                        <div class="list-wrapper">
+                            <div class="toggle-group">
+                                <span class="toggle-label">Use Resetprop</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="toggle-resetprop">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="toggle-group">
+                                <span class="toggle-label">Spoof ro.product.manufacturer</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="toggle-ro-product-manufacturer">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="toggle-group">
+                                <span class="toggle-label">Auto-update JSON on boot</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="toggle-autoupdate">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="toggle-group version-group">
+                                <span class="toggle-label">
+                                    Spoof Android version
+                                    <small id="version-rom-hint" class="toggle-hint"></small>
+                                </span>
+                                <select id="select-spoof-version" class="version-select">
+                                    <option value="never">Never</option>
+                                    <option value="rom">Up to this ROM</option>
+                                    <option value="force">Force</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button id="analyze-config" class="action-btn">Analyze</button>
+                        <button id="check-update" class="action-btn">Check Update</button>
+                        <button id="apply-update" class="action-btn">Update Now</button>
+                        <button id="backup-manager" class="action-btn">Backup/Restore</button>
+                    </div>
+                </div>
+                <div class="log-section" id="settings-log-section">
+                    <div class="log-header" id="log-header">
+                        <div class="log-title">
+                            <h2>Logs</h2>
+                            <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                        <div class="log-actions">
+                            <span class="copy-text" id="copy-log">Copy</span>
+                            <span class="clear-text" id="clear-log">Clear</span>
+                            <span class="logcat-text" id="start-logcat">Start Logcat</span>
+                            <span class="logcat-text" id="stop-logcat" style="display: none;">Stop Logcat</span>
+                        </div>
+                    </div>
+                    <div class="log-content" id="log-content">
+                        <div id="output"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="devices-tab" class="tab-content">
+    <div class="tab-nav tab-nav-device-extra">
+        <button id="tab-device-profile" class="tab-btn active">Device Profile</button>
+        <button id="tab-sim-gps-spoof" class="tab-btn">Sim / GPS Spoof</button>
+        <button id="tab-ids-spoof" class="tab-btn">IDs</button>
+    </div>
+
+    <div id="device-profile-section" class="tab-content active">
+        <div class="scroll-container">
+            <div class="list-wrapper"><div id="device-list" class="device-list"></div></div>
+        </div>
+    </div>
+    <div id="sim-gps-section" class="tab-content">
+        <div class="card"><div class="scroll-container"><div class="list-wrapper">
+            <div class="toggle-group">
+                <span class="toggle-label">Sim Spoof</span>
+                <label class="switch"><input type="checkbox" id="toggle-sim-spoof"><span class="slider"></span></label>
+            </div>
+            <div class="form-group">
+                <label for="sim-carrier-select">Select Carrier</label>
+                <select id="sim-carrier-select" class="version-select"><option value="">-- Select a carrier --</option></select>
+            </div>
+            <div class="form-group"><label for="sim-mccmnc">MCC/MNC</label><input type="text" id="sim-mccmnc" placeholder="e.g., 310410" readonly></div>
+            <div class="form-group"><label for="sim-country">Country</label><input type="text" id="sim-country" placeholder="e.g., United States" readonly></div>
+            <div class="form-group"><label for="sim-iso">ISO Code</label><input type="text" id="sim-iso" placeholder="e.g., us" readonly></div>
+            <hr class="section-divider">
+            <div class="form-group"><label for="gps-lat">GPS Latitude</label><input type="text" id="gps-lat" placeholder="e.g., 40.7128"></div>
+            <div class="form-group"><label for="gps-long">GPS Longitude</label><input type="text" id="gps-long" placeholder="e.g., -74.006"></div>
+            <div class="form-group"><label for="gps-timezone">Timezone</label><input type="text" id="gps-timezone" placeholder="e.g., America/New_York"></div>
+                    <hr class="section-divider">
+                    <div class="form-group"><label for="wifi-ssid">Wi-Fi SSID<span class="optional-badge">optional</span></label><input type="text" id="wifi-ssid" placeholder="e.g., HomeNetwork_5G"></div>
+                    <div class="form-group">
+                    <label for="media-drm-id">MediaDrm / Widevine ID<span class="optional-badge">optional</span></label>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <input type="text" id="media-drm-id" placeholder="e.g., 0123456789abcdef" style="flex:1">
+                        <button type="button" id="random-drm-btn" class="action-btn" style="flex:0;min-width:auto;padding:10px 14px;font-size:.85rem;background:linear-gradient(135deg,#a855f7,#7c3aed);white-space:nowrap">🎲 Generate</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="media-drm-level">Widevine Security Level</label>
+                    <select id="media-drm-level" class="version-select">
+                        <option value="L3">L3 - Software (default)</option>
+                        <option value="L2">L2 - Trusted Execution</option>
+                        <option value="L1">L1 - Hardware-backed (max)</option>
+                    </select>
+                </div>
+        </div></div><div class="button-group"><button id="apply-sim-gps" class="action-btn">Apply Sim / GPS Spoof</button></div></div>
+    </div>
+</div>
+    <div id="ids-section" class="tab-content">
+        <div class="card">
+            <div class="section-header"><h3>Application IDs</h3></div>
+            <p class="toggle-hint">Select an installed app, then generate or enter Android ID, GSF ID and App Set ID values. Values are stored per package in the module configuration.</p>
+            <div class="form-group">
+                <label for="ids-app-select">Application</label>
+                <select id="ids-app-select" class="version-select"><option value="">-- Select an installed app --</option></select>
+            </div>
+            <div class="form-group">
+                <label for="android-id-value">Android ID</label>
+                <div style="display:flex;gap:8px"><input id="android-id-value" type="text" maxlength="16" placeholder="16 hexadecimal characters" style="flex:1"><button type="button" id="random-android-id-btn" class="action-btn" style="flex:0;min-width:auto;padding:10px 14px">🎲 Random</button></div>
+            </div>
+            <div class="form-group">
+                <label for="gsf-id-value">GSF ID</label>
+                <div style="display:flex;gap:8px"><input id="gsf-id-value" type="text" maxlength="16" placeholder="16 hexadecimal characters" style="flex:1"><button type="button" id="random-gsf-id-btn" class="action-btn" style="flex:0;min-width:auto;padding:10px 14px">🎲 Random</button></div>
+            </div>
+            <div class="form-group">
+                <label for="app-set-id-value">App Set ID</label>
+                <div style="display:flex;gap:8px"><input id="app-set-id-value" type="text" placeholder="UUID" style="flex:1"><button type="button" id="random-app-set-id-btn" class="action-btn" style="flex:0;min-width:auto;padding:10px 14px">🎲 Random</button></div>
+            </div>
+            <div class="toggle-group"><span class="toggle-label">Enable ID profile for selected app</span><label class="switch"><input type="checkbox" id="toggle-ids-spoof"><span class="slider"></span></label></div>
+            <div class="button-group"><button id="apply-ids" class="action-btn">Save ID Profile</button></div>
+            <div class="section-header" style="margin-top:20px"><h3>Implementation note</h3></div>
+            <p class="toggle-hint">Android ID can be per-package on supported Android releases. GSF/App Set IDs are framework/provider managed and may require restarting the target app or its provider. The module never changes another package unless it is explicitly selected here.</p>
+        </div>
+    </div>
+
+    <div id="device-modal" class="modal">
+        <div class="modal-content device-form-content">
+            <div class="modal-header">
+                <h3 id="device-modal-title">Add New Device Profile</h3>
+            </div>
+            <form id="device-form">
+                <div class="scroll-container">
+                    <div class="form-group">
+                        <label for="device-name">
+                            Device<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-name" placeholder="e.g., comet">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-brand">
+                            Brand<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-brand" placeholder="e.g., google">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-model">
+                            Model<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-model" placeholder="e.g., Pixel 9 Pro Fold">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-product">
+                            Product<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-product" placeholder="e.g., comet_beta">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-manufacturer">
+                            Manufacturer<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-manufacturer" placeholder="e.g., Google">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-fingerprint">
+                            Fingerprint<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-fingerprint" placeholder="e.g., samsung/m23xqns/samsung:14/UP1A.231005.007/G990BXXU7EWD5:user/release-keys">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-board">
+                            Board<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-board" placeholder="e.g., mt6768">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-bootloader">
+                            Bootloader<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-bootloader" placeholder="e.g., unknown">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-hardware">
+                            Hardware<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-hardware" placeholder="e.g., mt6768">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-baseband">Baseband<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-baseband" placeholder="e.g., g5500a-260218-B-13400050">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-ram-gb">RAM (GB)<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-ram-gb" placeholder="e.g., 12">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-usb-debugging">USB Debugging<span class="optional-badge">optional</span></label>
+                        <select id="device-usb-debugging" class="version-select"><option value="0">0 - Disabled</option><option value="1">1 - Enabled</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-id">
+                            ID<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-id" placeholder="e.g., ZP11.251121.010">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-display">
+                            Display<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-display" placeholder="e.g., ZP11.251121.010">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-host">
+                            Host<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-host" placeholder="e.g., 58f21d9a5042">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-incremental">
+                            Incremental<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-incremental" placeholder="e.g., 14518957">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-timestamp">
+                            Timestamp<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-timestamp" placeholder="e.g., 1764628806">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-preview_sdk">
+                            Preview SDK<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-preview_sdk" placeholder="e.g., 20251117">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-sdk_full">
+                            SDK Full<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-sdk_full" placeholder="e.g., 36.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-codename">
+                            Codename<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-codename" placeholder="e.g., CANARY">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-user">
+                            User<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-user" placeholder="e.g., android-build">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-sdk_fingerprint">
+                            SDK Fingerprint<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-sdk_fingerprint" placeholder="e.g., 5884f561dec5f7cd98d06e1dc7ca80b1">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-security_patch">
+                            Security Patch<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-security_patch" placeholder="e.g., 2025-12-05">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-android-version">
+                            Android Version<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-android-version" placeholder="e.g., 16">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-sdk-int">
+                            SDK Version<span class="optional-badge">optional</span>
+                        </label>
+                        <input type="text" id="device-sdk-int" placeholder="e.g., 36">
+                    </div>
+                </div>
+                <div class="form-buttons">
+                    <button type="button" class="cancel-btn">Cancel</button>
+                    <button type="button" id="random-device-btn" class="action-btn" style="background: linear-gradient(135deg, #a855f7, #7c3aed);"> Random</button>
+                    <button type="submit" class="action-btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="error-popup" class="popup">
+        <div class="popup-content">
+            <h3>Error</h3>
+            <p id="error-message">Please fill out the required fields.</p>
+            <div class="popup-buttons">
+                <button id="error-ok" class="action-btn">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="snackbar" class="snackbar">
+        <span id="snackbar-message"></span>
+        <button id="snackbar-undo" class="snackbar-btn">Undo</button>
+    </div>
+
+    <div id="backup-popup" class="popup">
+        <div class="popup-content">
+            <h3>Backup/Restore</h3>
+            <div class="popup-body backup-grid">
+                <div class="backup-row">
+                    <div class="backup-info">
+                        <div class="backup-title">COPG-VD.json</div>
+                        <div class="backup-desc">Package names and devices</div>
+                    </div>
+                    <div class="button-group">
+                        <button class="small-btn backup-btn" data-file="COPG-VD.json">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                <polyline points="7 3 7 8 15 8"></polyline>
+                            </svg>
+                        </button>
+                        <button class="small-btn restore-btn" data-file="COPG-VD.json">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4M17 9l-5-5-5 5M12 3.5V14"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="popup" id="file-picker-popup">
+        <div class="popup-content">
+            <h3>Select File</h3>
+            <div class="breadcrumb-container">
+                <button class="small-btn back-btn" id="file-picker-back">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"></path>
+                    </svg>
+                </button>
+                <div class="breadcrumb-path" id="file-picker-path">/sdcard</div>
+            </div>
+            <div class="search-container">
+                <input type="text" id="file-picker-search" placeholder="Search files...">
+            </div>
+            <div class="popup-body">
+                <div class="scroll-container" id="file-picker-list"></div>
+            </div>
+            <div class="popup-footer">
+                <button class="action-btn cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="save-log-popup" class="popup">
+        <div class="popup-content">
+            <h3>Save Log</h3>
+            <p>Do you want to save this log to /storage/emulated/0/Download/COPG-VD/LOGS?</p>
+            <p>File name: <span id="save-log-filename" style="font-family: monospace; font-weight: bold;">COPG-VD-LOG.txt</span></p>
+            <div class="popup-buttons">
+                <button id="save-log-no" class="cancel-btn">No</button>
+                <button id="save-log-yes" class="action-btn">Yes</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="scripts.js"></script>
+</body>
+</html>
