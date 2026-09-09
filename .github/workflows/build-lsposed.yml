@@ -1,91 +1,172 @@
-name: Build LSPosed Module
+name: SpoofGo
+
+# The version lives in module/module.prop and nowhere else. .github/scripts/version.sh
+# bumps it, derives versionCode and rewrites module/update.json, so no string is ever
+# typed into this file.
 
 on:
-  push:
-    branches: [lspd]
-    paths:
-      - 'lsposed_module/**'
-      - '.github/workflows/build-lsposed.yml'
-  pull_request:
-    branches: [lspd]
-    paths:
-      - 'lsposed_module/**'
   workflow_dispatch:
+    inputs:
+      bump:
+        description: 'version bump'
+        type: choice
+        options: [none, patch, minor, major]
+        default: none
+      release:
+        description: 'publish a GitHub release with the zip'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: copg-vd-build
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: lsposed_module
+    environment: SpoofGo
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
 
-      - name: Set up JDK 17
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('lsposed_module/**/*.gradle*', 'lsposed_module/gradle.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-
-      - name: Setup Android SDK
+      - name: Set up Android SDK and NDK
         run: |
           echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-          mkdir -p $HOME/android-sdk
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-          unzip -q cmdline-tools.zip -d $HOME/android-sdk
-          mkdir -p $HOME/android-sdk/cmdline-tools/latest
-          shopt -s dotglob
-          mv $HOME/android-sdk/cmdline-tools/* $HOME/android-sdk/cmdline-tools/latest/ 2>/dev/null || true
-          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0"
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
-
-      - name: Grant gradlew
-        run: |
-          if [ -f gradlew ]; then chmod +x gradlew; fi
-
-      - name: Build LSPosed APK
-        run: |
-          if [ -f gradlew ]; then
-            ./gradlew assembleRelease --no-daemon
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+          if [ -d "$ANDROID_HOME/cmdline-tools/cmdline-tools" ]; then
+            mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          elif [ -d "$ANDROID_HOME/cmdline-tools/tools" ]; then
+            mv $ANDROID_HOME/cmdline-tools/tools $ANDROID_HOME/cmdline-tools/latest
           else
-            gradle wrapper
-            ./gradlew assembleRelease --no-daemon
+            echo "Unexpected directory structure after unzip:"
+            ls -la $ANDROID_HOME/cmdline-tools
+            exit 1
           fi
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.1"
+          mkdir -p $ANDROID_HOME/ndk
+          wget https://dl.google.com/android/repository/android-ndk-r29-linux.zip -O ndk.zip
+          unzip -q ndk.zip -d $ANDROID_HOME/ndk
+          NDK_DIR=$(find $ANDROID_HOME/ndk -maxdepth 1 -type d -name "android-ndk-r29*" | head -n 1)
+          echo "NDK_PATH=$NDK_DIR" >> $GITHUB_ENV
 
-      - name: Find APK
-        id: apk
+      - name: Install build tools
         run: |
-          APK=$(find . -name "*.apk" -path "*/release/*" | head -1)
-          echo "apk_path=$APK" >> $GITHUB_OUTPUT
-          echo "APK: $APK"
+          sudo apt-get purge -y man-db 2>/dev/null || true
+          sudo rm -rf /var/cache/man /var/lib/man-db /usr/share/man 2>/dev/null || true
+          echo 'DPkg::Post-Invoke { ":"; };' | sudo tee /etc/apt/apt.conf.d/99noman >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake zip curl
 
-      - name: Upload APK artifact
+      # One .so per ABI, named the way Zygisk loads them: zygisk/<abi>.so.
+      # Plain cmake instead of a third-party action: one less thing to trust in a build that
+      # produces a library loaded into zygote.
+      - name: Build zygisk libraries
+        env:
+          ABIS: arm64-v8a armeabi-v7a
+        run: |
+          for abi in $ABIS; do
+            echo "::group::$abi"
+            start=$(date -u +%s)
+            cmake -S zygisk -B "zygisk/build/$abi" \
+              -DCMAKE_TOOLCHAIN_FILE="$NDK_PATH/build/cmake/android.toolchain.cmake" \
+              -DANDROID_ABI="$abi" \
+              -DANDROID_PLATFORM=android-28 \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_MAKE_PROGRAM=/usr/bin/make
+            cmake --build "zygisk/build/$abi" --parallel "$(nproc)"
+            if [ ! -f "zygisk/build/$abi/libspoof.so" ]; then
+              echo "::error::$abi library not built"
+              ls -la "zygisk/build/$abi"
+              exit 1
+            fi
+            echo "$abi built in $(( $(date -u +%s) - start ))s: $(stat -c %s "zygisk/build/$abi/libspoof.so") bytes"
+            echo "::endgroup::"
+          done
+
+      - name: Resolve version
+        id: version
+        run: .github/scripts/version.sh "${{ inputs.bump == 'none' && 'read' || inputs.bump }}"
+
+      - name: Prepare module structure
+        run: |
+          mkdir -p module/zygisk
+          for abi in arm64-v8a armeabi-v7a; do
+            cp "zygisk/build/$abi/libspoof.so" "module/zygisk/$abi.so"
+          done
+          chmod 755 module/zygisk/*.so
+
+          # The WebUI reads these locally instead of fetching them from GitHub at runtime.
+          cp README.md LICENSE module/webroot/
+
+          chmod 755 module/customize.sh module/service.sh module/fingerprint-update.sh module/META-INF/com/google/android/update-binary
+
+      - name: Package module
+        run: |
+          cd module && zip -r9 "../${{ steps.version.outputs.zip_name }}" . -x '.git*'
+          cd .. && unzip -l "${{ steps.version.outputs.zip_name }}" | tail -n 1
+
+      - name: Commit the bump
+        if: steps.version.outputs.bumped == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add module/module.prop module/update.json
+          git commit -m "Release ${{ steps.version.outputs.version }} (versionCode ${{ steps.version.outputs.version_code }})"
+          git push
+
+      - name: Upload module artifact
         uses: actions/upload-artifact@v4
         with:
-          name: COPGVD-LSPosed
-          path: lsposed_module/app/build/outputs/apk/release/*.apk
+          name: SpoofGo-${{ steps.version.outputs.version }}
+          path: ${{ steps.version.outputs.zip_name }}
+
+      - name: Publish release
+        if: inputs.release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Release notes come from this version's section of the CHANGELOG when it has one.
+          notes=$(awk -v v="## $VERSION" '
+              $0 ~ "^"v { found = 1; next }
+              found && /^## / { exit }
+              found { print }
+          ' CHANGELOG.md)
+          if [ -n "$(printf '%s' "$notes" | tr -d '[:space:]')" ]; then
+              printf '%s\n' "$notes" > release-notes.md
+              gh release create "$VERSION" "${{ steps.version.outputs.zip_name }}" \
+                --title "$VERSION" --notes-file release-notes.md
+          else
+              echo "::warning::no CHANGELOG section for $VERSION, generating notes from commits"
+              gh release create "$VERSION" "${{ steps.version.outputs.zip_name }}" \
+                --title "$VERSION" --generate-notes
+          fi
+          # module/update.json already points at this asset, so the in-app updater works
+          # the moment the release exists.
 
       - name: Summary
         if: always()
         run: |
           {
-            echo "### COPG-VD LSPosed Build"
+            echo "### SpoofGo ${{ steps.version.outputs.version }}"
+            echo ''
             echo "| field | value |"
             echo "| --- | --- |"
-            echo "| branch | \`${{ github.ref_name }}\` |"
-            echo "| commit | \`${{ github.sha }}\` |"
-            echo "| apk | \`${{ steps.apk.outputs.apk_path }}\` |"
-          } >> $GITHUB_STEP_SUMMARY
+            echo "| version | ${{ steps.version.outputs.version }} |"
+            echo "| versionCode | ${{ steps.version.outputs.version_code }} |"
+            echo "| bumped | ${{ steps.version.outputs.bumped }} |"
+            echo "| released | ${{ inputs.release }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
