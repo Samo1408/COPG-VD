@@ -3,31 +3,44 @@ project(VirtualModule)
 
 include(FetchContent)
 
-# LSPlant provides the ART Java hook engine; Dobby supplies the inline hook backend.
-# They are fetched at build time so the project ZIP stays self-contained in source form.
+# Use source archives instead of Git clones. LSPlant contains test/documentation
+# submodules that are not required by this module; a Git clone tries to fetch
+# private-key based git@github.com URLs and breaks CI.
 FetchContent_Declare(
     lsplant
-    GIT_REPOSITORY https://github.com/LSPosed/LSPlant.git
-    GIT_TAG master
-    GIT_SHALLOW TRUE
+    URL https://codeload.github.com/LSPosed/LSPlant/tar.gz/refs/heads/master
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_Declare(
+    lsplant_dex_builder
+    URL https://codeload.github.com/LSPosed/DexBuilder/tar.gz/refs/heads/master
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_Declare(
     dobby
-    GIT_REPOSITORY https://github.com/jmpews/Dobby.git
-    GIT_TAG master
-    GIT_SHALLOW TRUE
+    URL https://codeload.github.com/jmpews/Dobby/tar.gz/refs/heads/master
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
+
+# Configure the dependency projects before they are added.
+set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
+set(DOBBY_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
+set(DOBBY_BUILD_TEST OFF CACHE BOOL "" FORCE)
+set(LSPLANT_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+
+# LSPlant's CMake expects DexBuilder at this exact path. Populate it from an
+# HTTPS archive before LSPlant's own add_subdirectory() is evaluated.
+FetchContent_Populate(lsplant)
+FetchContent_Populate(lsplant_dex_builder)
+set(LSPLANT_DEX_DIR "${lsplant_SOURCE_DIR}/lsplant/src/main/jni/external/dex_builder")
+file(MAKE_DIRECTORY "${LSPLANT_DEX_DIR}")
+file(COPY "${lsplant_dex_builder_SOURCE_DIR}/" DESTINATION "${LSPLANT_DEX_DIR}")
 FetchContent_MakeAvailable(lsplant dobby)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Build the hook backends into the module; do not ship a second shared Dobby library.
-set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
-set(DOBBY_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
-set(DOBBY_BUILD_TEST OFF CACHE BOOL "" FORCE)
-set(LSPLANT_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-
 add_compile_options(-Os -flto -ffunction-sections -fdata-sections)
 add_link_options(-flto -Wl,--gc-sections)
 
