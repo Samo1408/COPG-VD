@@ -65,7 +65,10 @@ const templates = {
                                                            Codename: ${escapeHtml(data.codename)}<br>
                                                            User: ${escapeHtml(data.user)}<br>
                                                            SDK Fingerprint: ${escapeHtml(data.sdk_fingerprint)}<br>
-                                                           Security Patch: ${escapeHtml(data.security_patch)}`;
+                                                           Security Patch: ${escapeHtml(data.security_patch)}<br>
+                                                           Android ID: ${escapeHtml(data.android_id || '')}<br>
+                                                           Wi-Fi SSID: ${escapeHtml(data.wifi_ssid || '')}<br>
+                                                           DRM ID: ${escapeHtml(data.drm_id || '')}`;
         
         return card;
     },
@@ -846,7 +849,9 @@ function renderDeviceList() {
                 sdk_full: sdk_full,
                 codename: codename,
                 user: user,
-                sdk_fingerprint: sdk_fingerprint
+                sdk_fingerprint: sdk_fingerprint,
+                wifi_ssid: currentConfig[key].WIFI_SSID || 'Undefined',
+                drm_id: currentConfig[key].DRM_ID || 'Undefined'
             });
             
             fragment.appendChild(deviceCard);
@@ -904,6 +909,16 @@ function openDeviceModal(deviceKey = null) {
         editingDevice = deviceKey;
         const deviceData = currentConfig[deviceKey];
         document.getElementById('device-name').value = deviceData.DEVICE || '';
+        document.getElementById('device-wifi-ssid').value = deviceData.WIFI_SSID || '';
+        document.getElementById('device-drm-id').value = deviceData.DRM_ID || '';
+        document.getElementById('device-sim-operator').value = deviceData.SIM_OPERATOR || '';
+        document.getElementById('device-sim-operator-name').value = deviceData.SIM_OPERATOR_NAME || '';
+        document.getElementById('device-sim-country-iso').value = deviceData.SIM_COUNTRY_ISO || '';
+        document.getElementById('device-network-operator').value = deviceData.NETWORK_OPERATOR || '';
+        document.getElementById('device-network-operator-name').value = deviceData.NETWORK_OPERATOR_NAME || '';
+        document.getElementById('device-sim-serial').value = deviceData.SIM_SERIAL || '';
+        document.getElementById('device-subscriber-id').value = deviceData.SUBSCRIBER_ID || '';
+        document.getElementById('device-line1-number').value = deviceData.LINE1_NUMBER || '';
         document.getElementById('device-brand').value = deviceData.BRAND || '';
         document.getElementById('device-model').value = deviceData.MODEL || '';
         document.getElementById('device-product').value = deviceData.PRODUCT || '';
@@ -928,6 +943,10 @@ function openDeviceModal(deviceKey = null) {
         setupAndroidSdkLink();
     } else {
         title.textContent = 'Add New Device Profile';
+    const wifiField = document.getElementById('device-wifi-ssid');
+    const drmField = document.getElementById('device-drm-id');
+    if (wifiField) wifiField.value = '';
+    if (drmField) drmField.value = '';
         editingDevice = null;
         form.reset();
         setupAndroidSdkLink();
@@ -1033,6 +1052,71 @@ function setupAndroidSdkLink() {
     });
 }
 
+function generateAndroidId() {
+    const bytes = new Uint8Array(8);
+    if (window.crypto && window.crypto.getRandomValues) {
+        window.crypto.getRandomValues(bytes);
+    } else {
+        for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+
+function randomHex(bytes) {
+    const data = new Uint8Array(bytes);
+    if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(data);
+    else for (let i = 0; i < data.length; i++) data[i] = Math.floor(Math.random() * 256);
+    return Array.from(data, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function generateWifiSsid() {
+    return 'COPG-' + randomHex(3).toUpperCase();
+}
+
+function generateDrmId() {
+    return randomHex(16);
+}
+
+async function loadAppPackages() {
+    const select = document.getElementById('app-profile-package');
+    if (!select) return;
+    try {
+        const out = await execCommand('pm list packages -3');
+        const packages = out.split(/\r?\n/).map(x => x.replace(/^package:/, '').trim()).filter(Boolean).sort();
+        select.innerHTML = packages.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+        if (!packages.length) select.innerHTML = '<option value="">No user applications found</option>';
+    } catch (_) {
+        select.innerHTML = '<option value="">Unable to enumerate applications</option>';
+    }
+}
+
+function openAppProfileModal() {
+    const modal = document.getElementById('app-profile-modal');
+    if (!modal) return;
+    loadAppPackages();
+    modal.style.display = 'flex';
+}
+
+function saveAppProfile(e) {
+    e.preventDefault();
+    const pkg = document.getElementById('app-profile-package').value.trim();
+    const id = document.getElementById('app-profile-android-id').value.trim().toLowerCase();
+    if (!pkg || !id || !/^[0-9a-f]{16}$/.test(id)) {
+        appendToOutput('Select an application and enter a valid 16-character Android ID', 'error');
+        return;
+    }
+    if (!currentConfig['APP_PROFILES']) currentConfig['APP_PROFILES'] = {};
+    currentConfig['APP_PROFILES'][pkg] = { ANDROID_ID: id };
+    saveConfig().then(async () => {
+        // The native Zygisk hook is installed when the target process starts.
+        // Restart the selected app so the new App Profile is picked up immediately.
+        try { await execCommand(`am force-stop ${shq(pkg)}`); } catch (_) {}
+        closeModal('app-profile-modal');
+        appendToOutput(`Android ID profile saved for ${pkg} — app restarted`, 'success');
+    }).catch(err => appendToOutput(`Failed to save app profile: ${err}`, 'error'));
+}
+
 async function saveDevice(e) {
     e.preventDefault();
     
@@ -1118,8 +1202,20 @@ async function saveDevice(e) {
     const codename = document.getElementById('device-codename').value.trim() || 'Undefined';
     const user = document.getElementById('device-user').value.trim() || 'Undefined';
     const sdk_fingerprint = document.getElementById('device-sdk_fingerprint').value.trim() || 'Undefined';
+    const wifiSsid = document.getElementById('device-wifi-ssid').value.trim();
+    const drmId = document.getElementById('device-drm-id').value.trim();
+    const simOperator = document.getElementById('device-sim-operator').value.trim();
+    const simOperatorName = document.getElementById('device-sim-operator-name').value.trim();
+    const simCountryIso = document.getElementById('device-sim-country-iso').value.trim().toLowerCase();
+    const networkOperator = document.getElementById('device-network-operator').value.trim();
+    const networkOperatorName = document.getElementById('device-network-operator-name').value.trim();
+    const simSerial = document.getElementById('device-sim-serial').value.trim();
+    const subscriberId = document.getElementById('device-subscriber-id').value.trim();
+    const line1Number = document.getElementById('device-line1-number').value.trim();
     
+    const previousDeviceData = (editingDevice && currentConfig[editingDevice]) ? currentConfig[editingDevice] : {};
     const deviceData = {
+        ...previousDeviceData,
         BRAND: brand,
         DEVICE: deviceName,
         MANUFACTURER: manufacturer,
@@ -1142,6 +1238,11 @@ async function saveDevice(e) {
         SDK_FINGERPRINT: sdk_fingerprint
     };
     
+    if (wifiSsid) deviceData.WIFI_SSID = wifiSsid; else delete deviceData.WIFI_SSID;
+    if (drmId) deviceData.DRM_ID = drmId; else delete deviceData.DRM_ID;
+    const simFields = { SIM_OPERATOR: simOperator, SIM_OPERATOR_NAME: simOperatorName, SIM_COUNTRY_ISO: simCountryIso, NETWORK_OPERATOR: networkOperator, NETWORK_OPERATOR_NAME: networkOperatorName, SIM_SERIAL: simSerial, SUBSCRIBER_ID: subscriberId, LINE1_NUMBER: line1Number };
+    Object.entries(simFields).forEach(([k,v]) => { if (v) deviceData[k] = v; else delete deviceData[k]; });
+
     if (androidVersion) {
         deviceData.ANDROID_VERSION = androidVersion;
     }
@@ -1525,6 +1626,23 @@ function applyEventListeners() {
     }));
 
     document.getElementById('device-form').addEventListener('submit', saveDevice);
+
+    const wifiRandom = document.getElementById('generate-wifi-ssid');
+    if (wifiRandom) wifiRandom.addEventListener('click', () => {
+        document.getElementById('device-wifi-ssid').value = generateWifiSsid();
+    });
+    const drmRandom = document.getElementById('generate-drm-id');
+    if (drmRandom) drmRandom.addEventListener('click', () => {
+        document.getElementById('device-drm-id').value = generateDrmId();
+    });
+    const appRandom = document.getElementById('generate-app-android-id');
+    if (appRandom) appRandom.addEventListener('click', () => {
+        document.getElementById('app-profile-android-id').value = generateAndroidId();
+    });
+    const appForm = document.getElementById('app-profile-form');
+    if (appForm) appForm.addEventListener('submit', saveAppProfile);
+    const appProfileButton = document.getElementById('app-profile-button');
+    if (appProfileButton) appProfileButton.addEventListener('click', openAppProfileModal);
 
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
