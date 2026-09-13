@@ -850,7 +850,6 @@ function renderDeviceList() {
                 codename: codename,
                 user: user,
                 sdk_fingerprint: sdk_fingerprint,
-                android_id: currentConfig[key].ANDROID_ID || 'Undefined',
                 wifi_ssid: currentConfig[key].WIFI_SSID || 'Undefined',
                 drm_id: currentConfig[key].DRM_ID || 'Undefined'
             });
@@ -910,7 +909,6 @@ function openDeviceModal(deviceKey = null) {
         editingDevice = deviceKey;
         const deviceData = currentConfig[deviceKey];
         document.getElementById('device-name').value = deviceData.DEVICE || '';
-        document.getElementById('device-android-id').value = deviceData.ANDROID_ID || '';
         document.getElementById('device-wifi-ssid').value = deviceData.WIFI_SSID || '';
         document.getElementById('device-drm-id').value = deviceData.DRM_ID || '';
         document.getElementById('device-sim-operator').value = deviceData.SIM_OPERATOR || '';
@@ -1211,7 +1209,6 @@ async function saveDevice(e) {
     const codename = document.getElementById('device-codename').value.trim() || 'Undefined';
     const user = document.getElementById('device-user').value.trim() || 'Undefined';
     const sdk_fingerprint = document.getElementById('device-sdk_fingerprint').value.trim() || 'Undefined';
-    const androidId = document.getElementById('device-android-id').value.trim().toLowerCase();
     const wifiSsid = document.getElementById('device-wifi-ssid').value.trim();
     const drmId = document.getElementById('device-drm-id').value.trim();
     const simOperator = document.getElementById('device-sim-operator').value.trim();
@@ -1247,18 +1244,6 @@ async function saveDevice(e) {
         USER: user,
         SDK_FINGERPRINT: sdk_fingerprint
     };
-    
-    if (androidId) {
-        if (!/^[0-9a-f]{16}$/.test(androidId)) {
-            const field = document.getElementById('device-android-id');
-            field.classList.add('error');
-            appendToOutput('Android ID must be exactly 16 hexadecimal characters', 'error');
-            return;
-        }
-        deviceData.ANDROID_ID = androidId;
-    } else {
-        delete deviceData.ANDROID_ID;
-    }
     
     if (wifiSsid) deviceData.WIFI_SSID = wifiSsid; else delete deviceData.WIFI_SSID;
     if (drmId) deviceData.DRM_ID = drmId; else delete deviceData.DRM_ID;
@@ -1666,18 +1651,6 @@ function applyEventListeners() {
     if (appForm) appForm.addEventListener('submit', saveAppProfile);
     const appProfileButton = document.getElementById('app-profile-button');
     if (appProfileButton) appProfileButton.addEventListener('click', openAppProfileModal);
-
-    const generateAndroidIdButton = document.getElementById('generate-android-id');
-    if (generateAndroidIdButton) {
-        generateAndroidIdButton.addEventListener('click', () => {
-            const input = document.getElementById('device-android-id');
-            if (!input) return;
-            input.value = generateAndroidId();
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.focus();
-            input.select();
-        });
-    }
 
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
