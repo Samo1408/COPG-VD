@@ -111,6 +111,16 @@ MAPPING
 
 # Re-runnable: fingerprint-update.sh calls "service.sh --props-only" right after refreshing the
 # JSON, so resetprop never disagrees with what the zygisk module will read.
+apply_android_id() {
+  [ -f "$COPG_VD_JSON" ] || return 0
+  android_id=$(grep -o '"ANDROID_ID"[[:space:]]*:[[:space:]]*"[^"]*"' "$COPG_VD_JSON" 2>/dev/null | head -n 1 | sed 's/.*:[[:space:]]*"\([^"]*\)"/\1/')
+  case "$android_id" in
+    [0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])
+      settings put secure android_id "$(echo "$android_id" | tr '[:upper:]' '[:lower:]')" >/dev/null 2>&1
+      ;;
+  esac
+}
+
 apply_props() {
   json_content=$(cat "$COPG_VD_JSON")
   getprop_output=$(getprop)
@@ -188,6 +198,7 @@ fi
 [ -f "$MODDIR/fingerprint-update.sh" ] && sh "$MODDIR/fingerprint-update.sh" sync-settings >/dev/null 2>&1
 
 apply_props
+apply_android_id
 
 until [ "$(getprop sys.boot_completed)" = "1" ]; do
     sleep 2
