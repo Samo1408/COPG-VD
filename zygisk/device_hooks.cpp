@@ -84,20 +84,20 @@ static jobject hexOrUtf8Bytes(JNIEnv* e, const std::string& s) {
     e->SetByteArrayRegion(a,0,(jsize)b.size(),b.data()); return a;
 }
 
-static bool hook(JNIEnv* e, const char* cls, const char* name, const char* sig, jobject value, int argc) {
+static bool hook(JNIEnv* e, const char* cls, const char* name, const char* sig, jobject value, int javaArgc) {
     jclass c=find(e,cls); if(!c)return false;
     jclass cc=find(e,"java/lang/Class"); if(!cc)return false;
     jmethodID get=e->GetMethodID(cc,"getDeclaredMethod","(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;");
     jclass mh=find(e,"java/lang/invoke/MethodHandle");
     jmethodID cb=mh?e->GetMethodID(mh,"invokeWithArguments","([Ljava/lang/Object;)Ljava/lang/Object;"):nullptr;
     if(!get||!cb){e->ExceptionClear();return false;}
-    jobjectArray p=e->NewObjectArray(argc,cc,nullptr);
-    // All currently targeted methods are no-arg except TelephonyManager#getNetworkOperatorName etc.
-    for(int i=0;i<argc;i++) e->SetObjectArrayElement(p,i,find(e,"java/lang/String"));
+    // Reflection receives only the Java method parameters; LSPlant's callback
+    // receives the receiver as argument 0 for an instance method.
+    jobjectArray p=e->NewObjectArray(javaArgc,cc,nullptr);
     jstring n=e->NewStringUTF(name);
     jobject m=e->CallObjectMethod(c,get,n,p); e->DeleteLocalRef(p); e->DeleteLocalRef(n);
     if(e->ExceptionCheck()||!m){e->ExceptionClear();return false;}
-    jobject h=makeConstantHooker(e,value,argc); if(!h)return false;
+    jobject h=makeConstantHooker(e,value,javaArgc + 1); if(!h)return false;
     jobject backup=lsplant::Hook(e,m,h,cb);
     if(!backup){LOGE("hook failed %s.%s",cls,name);return false;}
     g_hookers.push_back(e->NewGlobalRef(h));
