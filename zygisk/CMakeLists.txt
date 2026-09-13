@@ -16,9 +16,11 @@ FetchContent_Declare(
     URL https://codeload.github.com/LSPosed/DexBuilder/tar.gz/refs/heads/master
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
+# Pin Dobby to a known Android/NDK-compatible revision. Newer master revisions
+# currently regress on Android clang (OSMemory include cycle + Mach-O @PAGE assembly).
 FetchContent_Declare(
     dobby
-    URL https://codeload.github.com/jmpews/Dobby/tar.gz/refs/heads/master
+    URL https://codeload.github.com/jmpews/Dobby/tar.gz/809f8ca
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 
