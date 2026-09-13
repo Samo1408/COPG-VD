@@ -84,7 +84,7 @@ static jobject hexOrUtf8Bytes(JNIEnv* e, const std::string& s) {
     e->SetByteArrayRegion(a,0,(jsize)b.size(),b.data()); return a;
 }
 
-static bool hook(JNIEnv* e, const char* cls, const char* name, const char* sig, jobject value, int javaArgc) {
+static bool hook(JNIEnv* e, const char* cls, const char* name, jobject value, int javaArgc) {
     jclass c=find(e,cls); if(!c)return false;
     jclass cc=find(e,"java/lang/Class"); if(!cc)return false;
     jmethodID get=e->GetMethodID(cc,"getDeclaredMethod","(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;");
@@ -183,7 +183,7 @@ static void installTelephony(JNIEnv* e,const DeviceCfg& c) {
       {"getNetworkOperator",&c.networkOperator},{"getNetworkOperatorName",&c.networkOperatorName},
       {"getSimSerialNumber",&c.simSerial},{"getSubscriberId",&c.subscriberId},{"getLine1Number",&c.line1Number}
     };
-    for(auto& x:xs) if(!x.v->empty()) { jobject v=newString(e,*x.v); hook(e,"android/telephony/TelephonyManager",x.n,"()Ljava/lang/String;",v,1); }
+    for(auto& x:xs) if(!x.v->empty()) { jobject v=newString(e,*x.v); hook(e,"android/telephony/TelephonyManager",x.n,v,0); }
 }
 
 void install(JNIEnv* e) {
