@@ -1,70 +1,63 @@
-## COPG-VD
-COPG-VD is a module designed for global device spoofing.  
-This means even system apps and the whole device will be hooked.  
-  
-## How to use?
-If using this module and spoofing a working FingerPrint, using PlayIntegrityFix or GooglePhotosUnlimited are unnecessary.  
-### Example JSON config file  
-`/data/adb/COPG-VD.json`
-* All fields are OPTIONAL. If some field is not provided, it will be skipped.  
-```json
-{
-  "Instructions": "Use strings on double-quotes only.",
-  "Instructions": "All fields are OPTIONAL. If some field is not provided, it will be skipped.",
-  "Strings extracted from": "https://dl.google.com/developers/android/CANARY/images/factory/comet_beta-zp11.260717.006-factory-1458a2a5.zip",
-  "COPG-VD": {
-    "BRAND": "google",
-    "DEVICE": "comet",
-    "MANUFACTURER": "Google",
-    "MODEL": "Pixel 9 Pro Fold",
-    "FINGERPRINT": "google/comet_beta/comet:CANARY/ZP11.260717.006/16004061:user/release-keys",
-    "PRODUCT": "comet_beta",
-    "BOOTLOADER": "unknown",
-    "BOARD": "comet",
-    "HARDWARE": "comet",
-    "DISPLAY": "ZP11.260717.006",
-    "ID": "ZP11.260717.006",
-    "HOST": "e6a08b72aae6",
-    "INCREMENTAL": "16004061",
-    "TIMESTAMP": "1785780531",
-    "PREVIEW_SDK": "20260805",
-    "USER": "android-build",
-    "SDK_FINGERPRINT": "88d3b71bccd150fc3f60ac4d1026e1db",
-    "UUID": "62diQFW6nD4Hahmxok7HCfvYo9s1e42GqP9SatyVrVQ",
-    "SECURITY_PATCH": "2026-08-05"
-  }
-}
-```
-Be sure to use strings on double-quotes only.  
-The block above and `module/COPG-VD.json.example` are refreshed daily by the [Update COPG-VD.json](.github/workflows/update-json.yml) workflow, straight from the newest Google factory image.  
-### Keeping the fingerprint fresh  
-`fingerprint-update.sh` pulls that file and updates your config, from the WebUI (**Check Update** / **Update Now**) or by itself **once per boot** (**Auto-update JSON on boot**, on by default).  
-* Both `/data/adb/COPG-VD.json` and `/data/adb/modules/COPG-VD/COPG-VD.json` are updated when both exist, and the previous content is kept as `.bak`.  
-* Only the build fields are rewritten (fingerprint, ID, incremental, timestamp, security patch, SDK, UUID, host, user). Everything else you customized is preserved: extra keys, `BOOTLOADER`/`BOARD`/`HARDWARE`, other objects, key order and formatting.  
-* It never goes backwards: an upstream build older than the one installed is refused. This is
-  routine (the repo can sit behind a config you updated by hand) and it is also the guard that
-  matters most on Android, where the only downloader available is busybox `wget`, which cannot
-  validate TLS certificates - every value is validated before use for the same reason.  
-* If your profile spoofs **another device** (different `BRAND`/`DEVICE`/`MANUFACTURER`/`MODEL`/`PRODUCT`), nothing is applied - a Pixel fingerprint on another profile is worse than an old fingerprint.  
-* At boot it runs in the background and keeps retrying for ~10 minutes, because wifi is usually not up yet when the boot finishes. It never delays the boot.  
-* `resetprop` is re-applied right after an update, but `android.os.Build` is written by the zygisk module when zygote starts: **reboot** for the new values to reach apps.  
-* Log at `/data/adb/COPG-VD.update.log`.  
-### Android version - and why it is not spoofed  
-`ANDROID_VERSION`, `SDK_INT`, `SDK_FULL` and `CODENAME` describe **your ROM**, not the device being spoofed. Telling apps the SDK is newer than the framework really is makes them call APIs that do not exist: Google's apps crash, the phone reboots, and it starts over. The boot itself completes, so it is a **softloop** and nothing shows up in the boot logs.  
-* They are not in the shipped config and the updater never writes them.  
-* **Spoof Android version** in the WebUI decides whether they are applied at all:  
-  * **Never** (default) - the ROM's own version is used.  
-  * **Up to this ROM** - only what does not exceed it, which in practice means lowering the SDK.  
-  * **Force** - exactly what the config says. This is what causes the softloop.  
-* The real version is read from `/system/build.prop`, never from `getprop` - that is the very thing this module falsifies.  
-### Analyze  
-**Analyze** in the WebUI (or `fingerprint-update.sh analyze`) audits the config as it stands: version against the ROM, whether the file still parses at all (a broken one makes the module spoof **nothing**, and only logcat says so), whether the fingerprint agrees with the fields around it, keys the module does not read, dates, and whether the props already carry what the config asks for.  
-### Settings in the config  
-`COPG-VD.json` can carry a `COPG-VD-Settings` object - `resetprop`, `autoupdate`, `spoof_manufacturer`, `spoof_version` - so your choices travel with a backup and can be edited by hand. The WebUI writes both that and the flag files the boot scripts read. `"spoof_version": "force"` is refused from the file and downgraded: restoring an old backup must not re-arm it behind your back.  
-### WebUI  
-Using the WebUI is unnecessary if you edit the JSON config file directly.  
-If you are a Magisk user, use KsuWebUI by KOW (https://github.com/KOWX712/KsuWebUIStandalone/releases).  
-#### Use resetprop:  
-Disable resetprop usage and enable spoof Build info only.  
-#### Use ro.product.manufacturer:  
-Disable if you care for "Found device spoofing" detection in Disclosure root detector app.  
+# Changelog
+
+## v5.1.0-vd
+- The Android version is no longer spoofed. ANDROID_VERSION, SDK_INT, SDK_FULL and CODENAME describe the ROM, not the build being spoofed. A device told its SDK is newer than it really is has apps calling APIs its framework does not have: Google's apps crash, the phone reboots, and it starts over. That is a softloop - the boot itself completes, so nothing shows up in the boot logs and nobody finds the cause.
+ . They are gone from the config the module ships, and the daily job never writes them again.
+ . A config that already carries them is cleaned when you update, keeping a .bak.
+ . A three-state selector in the WebUI decides whether they are applied at all: Never (default), Up to this ROM (only what does not exceed it), Force (as written - this is what causes the softloop).
+ . The real version is read from /system/build.prop. Never from getprop, which is the very thing this module falsifies.
+- Fixed ro.build.version.release_or_codename being given the literal string "REL". By AOSP it holds the release number when the codename is REL, so the module was publishing a combination no real device reports.
+- Added Analyze to the WebUI: checks the config against the ROM and against itself - version vs ROM, whether the file still parses (a broken one makes the module spoof nothing, and only logcat says so), whether the fingerprint agrees with the fields around it, keys the module does not read, dates, and whether the props already carry what the config asks for.
+- Settings can now be declared in COPG-VD.json, in a COPG-VD-Settings object: resetprop, autoupdate, spoof_manufacturer and spoof_version. The WebUI writes both the config and the flag files.
+ . "spoof_version": "force" is refused from the config and downgraded to "rom" - restoring an old backup must not re-arm the dangerous mode behind your back. Arm it in the WebUI.
+- "Spoof ro.product.manufacturer" no longer edits service.sh, so it survives module updates. If you had it off, set it again after updating.
+- Fixed the prop reader taking several lines at once when the config holds more than one object.
+- Fixed updates failing on the device while passing on a PC: the field list was written across two lines, and Android's awk refuses a newline inside a -v assignment. Half the fields were never refreshed, silently.
+
+_The version group only reaches apps after a reboot. If you came from v5.0.x and the phone kept rebooting on its own, this is the update that stops it._
+
+## v5.0.1-vd
+- The WebUI content security policy is now declared in the page itself, not only in config.json. KsuWebUIStandalone, which is what Magisk users run, does not read config.json - so on Magisk there was no policy at all.
+- The daily job that refreshes COPG-VD.json.example will never replace a build with an older one, the same rule the on-device updater already followed.
+
+_No change to the spoofing itself. Coming from v5.0.0-vd is optional; coming from anything older is not._
+
+## v5.0.0-vd
+- Added COPG-VD.json auto-update, from the WebUI (Check Update / Update Now) or once per boot.
+ . Only the build fields are rewritten, everything else you customized is kept: extra keys, custom BOOTLOADER/BOARD/HARDWARE, other objects, key order and formatting.
+ . Nothing is applied if your config spoofs another device.
+ . Never goes backwards: a build older than the one installed is refused.
+ . Updates /data/adb/COPG-VD.json and the copy in the module folder when both exist, keeping the previous content as .bak.
+ . At boot it runs in background and retries for ~10 minutes, because wifi is usually not up yet. It never delays the boot.
+ . Can be turned off in the WebUI: "Auto-update JSON on boot".
+- Added uninstall.sh: removes what the module generates and keeps your config file.
+- Updated FINGERPRINT and Build info to: ZP11.260618.005.
+- The module is now built for armeabi-v7a and x86_64 too, not only arm64-v8a.
+- A daily workflow keeps COPG-VD.json.example on the newest Google build.
+- The version now lives only in module.prop, and the build workflow derives versionCode from it.
+- Fixed updateJson pointing to a branch that does not exist, so checking for updates works now.
+- Fixed a crash inside zygote in the atexit shim: the index could run past the array, and the memory was used again after being freed.
+- Fixed Build.TIME and Build.VERSION.SDK_INT_FULL getting garbage when the config has no TIMESTAMP, SDK_FULL or SDK_INT.
+- The WebUI no longer loads anything from the internet: marked, the fonts, the readme and the license are inside the module.
+- The WebUI no longer builds shell commands out of file names. A crafted file name on shared storage could run commands as root through the file picker.
+- The WebUI content security policy went from default-src * to default-src 'none', declared both in config.json and in the page itself, so it also applies under KsuWebUIStandalone (Magisk), which does not read config.json.
+
+_The new build only reaches android.os.Build after a reboot: resetprop is re-applied right away, but zygisk reads the config when zygote starts._
+
+## Working-tree changes
+- Added an **Android ID** field to the Device Profile editor with a cryptographically random 16-hex generator.
+- Saved `ANDROID_ID` in the `COPG-VD` profile and apply it through the Android Settings provider after saving and at boot.
+- Existing profile keys are preserved when editing, so fields such as `UUID` are not discarded by the WebUI.
+- This source snapshot contains no SIM, DRM/Widevine, or Wi-Fi SSID implementation to repair; those APIs are not referenced by the shipped Zygisk/native code. They were intentionally not replaced with property-only placeholders and therefore are not claimed as implemented here.
+
+### App Profile Android ID fix (Android 13/14)
+- Fixed the previous limitation where `settings put secure android_id` changed only the legacy/global secure setting. Android O+ applications read a per-app SSAID from the SettingsProvider SSAID table.
+- App Profiles are now enforced inside the target application process by hooking `Settings.Secure.getString(ContentResolver, String)` and `getStringForUser(ContentResolver, String, int)`. Only requests for `android_id` are replaced; all other Settings reads continue to the original implementation.
+- The hook uses LSPlant plus `java.lang.invoke.MethodHandle` as the callback bridge, so no extra APK/Dex/Xposed runtime is required. This keeps the module native/Zygisk-only.
+- The selected application is force-stopped after saving its profile so the new value is applied on its next start.
+- Android 13/14 are the primary supported targets for this fix.
+
+### LSPlant integration
+- Added LSPlant ART hook runtime integration with Dobby as the inline-hook backend.
+- Initialization is performed by the Zygisk module and reports success/failure to logcat as `COPG-VD/LSPlant`.
+- Identifier-specific hooks are intentionally not included in this integration layer.
