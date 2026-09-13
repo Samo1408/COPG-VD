@@ -523,14 +523,19 @@ public:
         }
         jclass contentResolver = env->FindClass("android/content/ContentResolver");
         jclass stringClass = env->FindClass("java/lang/String");
-        jclass intClass = env->FindClass("java/lang/Integer");
-        if (!contentResolver || !stringClass || !intClass) { env->ExceptionClear(); return; }
+        jclass integerClass = env->FindClass("java/lang/Integer");
+        if (!contentResolver || !stringClass || !integerClass) { env->ExceptionClear(); return; }
+        jfieldID integerTypeField = env->GetStaticFieldID(integerClass, "TYPE", "Ljava/lang/Class;");
+        jobject intClass = integerTypeField ? env->GetStaticObjectField(integerClass, integerTypeField) : nullptr;
+        if (env->ExceptionCheck() || !intClass) { env->ExceptionClear(); return; }
         if (!hookSettingsMethod(env, "getString", {contentResolver, stringClass}, androidId, android_id_hookers.emplace_back())) {
             android_id_hookers.pop_back();
         }
-        if (!hookSettingsMethod(env, "getStringForUser", {contentResolver, stringClass, intClass}, androidId, android_id_hookers.emplace_back())) {
+        if (!hookSettingsMethod(env, "getStringForUser", {contentResolver, stringClass, static_cast<jclass>(intClass)}, androidId, android_id_hookers.emplace_back())) {
             android_id_hookers.pop_back();
         }
+        env->DeleteLocalRef(intClass);
+        env->DeleteLocalRef(integerClass);
         LOGE("App Profile Android ID active for %s: %s", pkg.c_str(), androidId.c_str());
     }
 
