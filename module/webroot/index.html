@@ -52,6 +52,9 @@
                 User: [USER]
                 SDK Fingerprint: [SDK_FINGERPRINT]
                 Security Patch: [SECURITY_PATCH]
+                Android ID: [ANDROID-ID]
+                Wi-Fi SSID: [WIFI-SSID]
+                DRM ID: [DRM-ID]
             </div>
         </div>
     </template>
@@ -275,7 +278,8 @@
 
         <div class="tab-nav">
             <button id="tab-settings" class="tab-btn active">Settings</button>
-            <button id="tab-devices" class="tab-btn">Device</button>
+            <button id="app-profile-button" class="tab-btn" title="App Profile">App Profile</button>
+                <button id="tab-devices" class="tab-btn">Device</button>
         </div>
 
         <div class="tab-container" id="tab-container">
@@ -365,6 +369,52 @@
                             Device<span class="optional-badge">optional</span>
                         </label>
                         <input type="text" id="device-name" placeholder="e.g., comet">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-wifi-ssid">Wi-Fi SSID<span class="optional-badge">optional</span></label>
+                        <div class="input-action-row">
+                            <input type="text" id="device-wifi-ssid" placeholder="e.g., Training-WiFi" maxlength="32" autocomplete="off">
+                            <button type="button" id="generate-wifi-ssid" class="small-btn" title="Generate random Wi-Fi SSID" aria-label="Generate random Wi-Fi SSID">↻</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-drm-id">DRM ID<span class="optional-badge">optional</span></label>
+                        <div class="input-action-row">
+                            <input type="text" id="device-drm-id" placeholder="e.g., random DRM profile ID" maxlength="64" autocomplete="off">
+                            <button type="button" id="generate-drm-id" class="small-btn" title="Generate random DRM ID" aria-label="Generate random DRM ID">↻</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-sim-operator">SIM Operator<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-sim-operator" placeholder="e.g., 310260" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-sim-operator-name">SIM Operator Name<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-sim-operator-name" placeholder="e.g., T-Mobile" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-sim-country-iso">SIM Country ISO<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-sim-country-iso" placeholder="e.g., us" maxlength="2" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-network-operator">Network Operator<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-network-operator" placeholder="e.g., 310260" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-network-operator-name">Network Operator Name<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-network-operator-name" placeholder="e.g., T-Mobile" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-sim-serial">SIM Serial Number<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-sim-serial" placeholder="optional" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-subscriber-id">Subscriber ID / IMSI<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-subscriber-id" placeholder="optional" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-line1-number">Line 1 Number<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-line1-number" placeholder="optional" autocomplete="off">
                     </div>
                     <div class="form-group">
                         <label for="device-brand">
@@ -496,6 +546,33 @@
                 <div class="form-buttons">
                     <button type="button" class="cancel-btn">Cancel</button>
                     <button type="submit" class="action-btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="app-profile-modal" class="modal">
+        <div class="modal-content device-form-content">
+            <div class="modal-header">
+                <h3>App Profile</h3>
+            </div>
+            <form id="app-profile-form">
+                <div class="scroll-container">
+                    <div class="form-group">
+                        <label for="app-profile-package">Application</label>
+                        <select id="app-profile-package"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="app-profile-android-id">Android ID<span class="optional-badge">optional</span></label>
+                        <div class="input-action-row">
+                            <input type="text" id="app-profile-android-id" maxlength="16" placeholder="e.g., 3f8a1c2d9e4b7a61" autocomplete="off">
+                            <button type="button" id="generate-app-android-id" class="small-btn" title="Generate random Android ID" aria-label="Generate random Android ID">↻</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-buttons">
+                    <button type="button" class="cancel-btn">Cancel</button>
+                    <button type="submit" class="action-btn">Apply</button>
                 </div>
             </form>
         </div>
