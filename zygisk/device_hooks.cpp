@@ -13,7 +13,7 @@ using json = nlohmann::json;
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
-namespace copg_lsplant { bool init(JNIEnv* env); }
+namespace copg_lsplant { bool init(JNIEnv* env); bool initialized(); }
 
 namespace copg_device_hooks {
 static const char* CFG = "/data/adb/COPG-VD.json";
