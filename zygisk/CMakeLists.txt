@@ -151,6 +151,20 @@ endif()
 # The CI generator must therefore be a module-capable generator such as Ninja.
 # Do not disable C++ module scanning here: doing so makes CMake reject these targets.
 
+# LSPlant must be added as a real CMake subdirectory. FetchContent_Populate()
+# only downloads the source; it does NOT evaluate LSPlant's native CMakeLists.
+# Without this, CMake can accept the bare name "lsplant_static" and emit
+# "-llsplant_static" at link time, even though no archive is ever built.
+set(LSPLANT_NATIVE_SOURCE "${lsplant_SOURCE_DIR}/lsplant/src/main/jni")
+set(LSPLANT_NATIVE_BINARY "${lsplant_BINARY_DIR}/native")
+if(NOT EXISTS "${LSPLANT_NATIVE_SOURCE}/CMakeLists.txt")
+    message(FATAL_ERROR "LSPlant native CMakeLists.txt is missing: ${LSPLANT_NATIVE_SOURCE}/CMakeLists.txt")
+endif()
+add_subdirectory("${LSPLANT_NATIVE_SOURCE}" "${LSPLANT_NATIVE_BINARY}")
+if(NOT TARGET lsplant_static)
+    message(FATAL_ERROR "LSPlant target lsplant_static was not created")
+endif()
+
 # Dobby 809f8ca needs two small Android/Clang compatibility patches.
 # Patch the exact upstream source rather than relying on a version-sensitive
 # regex, because os_arch_features.h and the ARM64 assembly are fetched at
@@ -239,6 +253,9 @@ target_include_directories(virtual PRIVATE "${LSPLANT_PUBLIC_INCLUDE_DIR}")
 
 if(NOT TARGET dobby_static)
     message(FATAL_ERROR "Dobby target dobby_static was not created")
+endif()
+if(NOT TARGET lsplant_static)
+    message(FATAL_ERROR "LSPlant target lsplant_static was not created before linking")
 endif()
 
 target_link_libraries(virtual PRIVATE ${log-lib} lsplant_static dobby_static)
