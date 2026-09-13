@@ -39,8 +39,6 @@
                 Board: [BOARD]
                 Bootloader: [BOOTLOADER]
                 Hardware: [HARDWARE]
-                Baseband: [BASEBAND]
-                RAM: [RAM_GB] GB
                 ID: [ID]
                 Display: [DISPLAY]
                 HOST: [HOST]
@@ -54,6 +52,9 @@
                 User: [USER]
                 SDK Fingerprint: [SDK_FINGERPRINT]
                 Security Patch: [SECURITY_PATCH]
+                Android ID: [ANDROID-ID]
+                Wi-Fi SSID: [WIFI-SSID]
+                DRM ID: [DRM-ID]
             </div>
         </div>
     </template>
@@ -277,7 +278,8 @@
 
         <div class="tab-nav">
             <button id="tab-settings" class="tab-btn active">Settings</button>
-            <button id="tab-devices" class="tab-btn">Device</button>
+            <button id="app-profile-button" class="tab-btn" title="App Profile">App Profile</button>
+                <button id="tab-devices" class="tab-btn">Device</button>
         </div>
 
         <div class="tab-container" id="tab-container">
@@ -348,50 +350,10 @@
             </div>
 
             <div id="devices-tab" class="tab-content">
-    <div class="tab-nav tab-nav-device-extra">
-        <button id="tab-device-profile" class="tab-btn active">Device Profile</button>
-        <button id="tab-sim-gps-spoof" class="tab-btn">Sim / GPS Spoof</button>
-    </div>
-    <div id="device-profile-section" class="tab-content active">
-        <div class="scroll-container">
-            <div class="list-wrapper"><div id="device-list" class="device-list"></div></div>
+    <div class="scroll-container">
+        <div class="list-wrapper">
+            <div id="device-list" class="device-list"></div>
         </div>
-    </div>
-    <div id="sim-gps-section" class="tab-content">
-        <div class="card"><div class="scroll-container"><div class="list-wrapper">
-            <div class="toggle-group">
-                <span class="toggle-label">Sim Spoof</span>
-                <label class="switch"><input type="checkbox" id="toggle-sim-spoof"><span class="slider"></span></label>
-            </div>
-            <div class="form-group">
-                <label for="sim-carrier-select">Select Carrier</label>
-                <select id="sim-carrier-select" class="version-select"><option value="">-- Select a carrier --</option></select>
-            </div>
-            <div class="form-group"><label for="sim-mccmnc">MCC/MNC</label><input type="text" id="sim-mccmnc" placeholder="e.g., 310410" readonly></div>
-            <div class="form-group"><label for="sim-country">Country</label><input type="text" id="sim-country" placeholder="e.g., United States" readonly></div>
-            <div class="form-group"><label for="sim-iso">ISO Code</label><input type="text" id="sim-iso" placeholder="e.g., us" readonly></div>
-            <hr class="section-divider">
-            <div class="form-group"><label for="gps-lat">GPS Latitude</label><input type="text" id="gps-lat" placeholder="e.g., 40.7128"></div>
-            <div class="form-group"><label for="gps-long">GPS Longitude</label><input type="text" id="gps-long" placeholder="e.g., -74.006"></div>
-            <div class="form-group"><label for="gps-timezone">Timezone</label><input type="text" id="gps-timezone" placeholder="e.g., America/New_York"></div>
-                    <hr class="section-divider">
-                    <div class="form-group"><label for="wifi-ssid">Wi-Fi SSID<span class="optional-badge">optional</span></label><input type="text" id="wifi-ssid" placeholder="e.g., HomeNetwork_5G"></div>
-                    <div class="form-group">
-                    <label for="media-drm-id">MediaDrm / Widevine ID<span class="optional-badge">optional</span></label>
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <input type="text" id="media-drm-id" placeholder="e.g., 0123456789abcdef" style="flex:1">
-                        <button type="button" id="random-drm-btn" class="action-btn" style="flex:0;min-width:auto;padding:10px 14px;font-size:.85rem;background:linear-gradient(135deg,#a855f7,#7c3aed);white-space:nowrap">🎲 Generate</button>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="media-drm-level">Widevine Security Level</label>
-                    <select id="media-drm-level" class="version-select">
-                        <option value="L3">L3 - Software (default)</option>
-                        <option value="L2">L2 - Trusted Execution</option>
-                        <option value="L1">L1 - Hardware-backed (max)</option>
-                    </select>
-                </div>
-        </div></div><div class="button-group"><button id="apply-sim-gps" class="action-btn">Apply Sim / GPS Spoof</button></div></div>
     </div>
 </div>
 
@@ -407,6 +369,63 @@
                             Device<span class="optional-badge">optional</span>
                         </label>
                         <input type="text" id="device-name" placeholder="e.g., comet">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-android-id">Android ID<span class="optional-badge">optional</span></label>
+                        <div class="input-action-row">
+                            <input type="text" id="device-android-id" placeholder="e.g., 3f8a1c2d9e4b7a61" maxlength="16" autocomplete="off" spellcheck="false">
+                            <button type="button" id="generate-android-id" class="small-btn" title="Generate random Android ID" aria-label="Generate random Android ID">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 7h10"/><path d="M4 17h6"/><path d="M14 17h6"/><path d="M18 13l2 4-2 4"/><path d="M14 7l2-4 2 4"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-wifi-ssid">Wi-Fi SSID<span class="optional-badge">optional</span></label>
+                        <div class="input-action-row">
+                            <input type="text" id="device-wifi-ssid" placeholder="e.g., Training-WiFi" maxlength="32" autocomplete="off">
+                            <button type="button" id="generate-wifi-ssid" class="small-btn" title="Generate random Wi-Fi SSID" aria-label="Generate random Wi-Fi SSID">↻</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-drm-id">DRM ID<span class="optional-badge">optional</span></label>
+                        <div class="input-action-row">
+                            <input type="text" id="device-drm-id" placeholder="e.g., random DRM profile ID" maxlength="64" autocomplete="off">
+                            <button type="button" id="generate-drm-id" class="small-btn" title="Generate random DRM ID" aria-label="Generate random DRM ID">↻</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-sim-operator">SIM Operator<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-sim-operator" placeholder="e.g., 310260" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-sim-operator-name">SIM Operator Name<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-sim-operator-name" placeholder="e.g., T-Mobile" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-sim-country-iso">SIM Country ISO<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-sim-country-iso" placeholder="e.g., us" maxlength="2" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-network-operator">Network Operator<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-network-operator" placeholder="e.g., 310260" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-network-operator-name">Network Operator Name<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-network-operator-name" placeholder="e.g., T-Mobile" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-sim-serial">SIM Serial Number<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-sim-serial" placeholder="optional" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-subscriber-id">Subscriber ID / IMSI<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-subscriber-id" placeholder="optional" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-line1-number">Line 1 Number<span class="optional-badge">optional</span></label>
+                        <input type="text" id="device-line1-number" placeholder="optional" autocomplete="off">
                     </div>
                     <div class="form-group">
                         <label for="device-brand">
@@ -455,18 +474,6 @@
                             Hardware<span class="optional-badge">optional</span>
                         </label>
                         <input type="text" id="device-hardware" placeholder="e.g., mt6768">
-                    </div>
-                    <div class="form-group">
-                        <label for="device-baseband">Baseband<span class="optional-badge">optional</span></label>
-                        <input type="text" id="device-baseband" placeholder="e.g., g5500a-260218-B-13400050">
-                    </div>
-                    <div class="form-group">
-                        <label for="device-ram-gb">RAM (GB)<span class="optional-badge">optional</span></label>
-                        <input type="text" id="device-ram-gb" placeholder="e.g., 12">
-                    </div>
-                    <div class="form-group">
-                        <label for="device-usb-debugging">USB Debugging<span class="optional-badge">optional</span></label>
-                        <select id="device-usb-debugging" class="version-select"><option value="0">0 - Disabled</option><option value="1">1 - Enabled</option></select>
                     </div>
                     <div class="form-group">
                         <label for="device-id">
@@ -549,8 +556,34 @@
                 </div>
                 <div class="form-buttons">
                     <button type="button" class="cancel-btn">Cancel</button>
-                    <button type="button" id="random-device-btn" class="action-btn" style="background: linear-gradient(135deg, #a855f7, #7c3aed);"> Random</button>
                     <button type="submit" class="action-btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="app-profile-modal" class="modal">
+        <div class="modal-content device-form-content">
+            <div class="modal-header">
+                <h3>App Profile</h3>
+            </div>
+            <form id="app-profile-form">
+                <div class="scroll-container">
+                    <div class="form-group">
+                        <label for="app-profile-package">Application</label>
+                        <select id="app-profile-package"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="app-profile-android-id">Android ID<span class="optional-badge">optional</span></label>
+                        <div class="input-action-row">
+                            <input type="text" id="app-profile-android-id" maxlength="16" placeholder="e.g., 3f8a1c2d9e4b7a61" autocomplete="off">
+                            <button type="button" id="generate-app-android-id" class="small-btn" title="Generate random Android ID" aria-label="Generate random Android ID">↻</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-buttons">
+                    <button type="button" class="cancel-btn">Cancel</button>
+                    <button type="submit" class="action-btn">Apply</button>
                 </div>
             </form>
         </div>
