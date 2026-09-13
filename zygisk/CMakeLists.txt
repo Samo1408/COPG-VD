@@ -128,7 +128,18 @@ file(WRITE "${DOBBY_LOGGING}" "${DOBBY_LOGGING_TEXT}")
 set(LSPLANT_DEX_DIR "${lsplant_SOURCE_DIR}/lsplant/src/main/jni/external/dex_builder")
 file(MAKE_DIRECTORY "${LSPLANT_DEX_DIR}")
 file(COPY "${lsplant_dex_builder_SOURCE_DIR}/" DESTINATION "${LSPLANT_DEX_DIR}")
-FetchContent_MakeAvailable(lsplant)
+# LSPlant is a multi-module repository; its native CMake entry point is
+# lsplant/src/main/jni/CMakeLists.txt. Add that native project explicitly so
+# the lsplant_static target is actually created in this build.
+set(LSPLANT_NATIVE_DIR "${lsplant_SOURCE_DIR}/lsplant/src/main/jni")
+if(NOT EXISTS "${LSPLANT_NATIVE_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "LSPlant native CMakeLists.txt is missing: ${LSPLANT_NATIVE_DIR}/CMakeLists.txt")
+endif()
+add_subdirectory("${LSPLANT_NATIVE_DIR}" "${lsplant_BINARY_DIR}/native")
+
+if(NOT TARGET lsplant_static)
+    message(FATAL_ERROR "LSPlant target lsplant_static was not created")
+endif()
 
 # Dobby 809f8ca needs two small Android/Clang compatibility patches.
 # Patch the exact upstream source rather than relying on a version-sensitive
@@ -216,7 +227,11 @@ if(NOT EXISTS "${LSPLANT_PUBLIC_INCLUDE_DIR}/lsplant.hpp")
 endif()
 target_include_directories(virtual PRIVATE "${LSPLANT_PUBLIC_INCLUDE_DIR}")
 
-target_link_libraries(virtual ${log-lib} lsplant_static dobby_static)
+if(NOT TARGET dobby_static)
+    message(FATAL_ERROR "Dobby target dobby_static was not created")
+endif()
+
+target_link_libraries(virtual PRIVATE ${log-lib} lsplant_static dobby_static)
 
 set_target_properties(virtual PROPERTIES
     LINK_FLAGS "-Wl,--exclude-libs,ALL"
