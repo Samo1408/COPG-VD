@@ -23,6 +23,11 @@ FetchContent_Declare(
     URL https://codeload.github.com/jmpews/Dobby/tar.gz/809f8ca
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
+FetchContent_Declare(
+    parallel_hashmap
+    URL https://codeload.github.com/greg7mdp/parallel-hashmap/tar.gz/refs/heads/master
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
 
 # Configure the dependency projects before they are added.
 set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
@@ -35,6 +40,7 @@ set(LSPLANT_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 FetchContent_Populate(lsplant)
 FetchContent_Populate(lsplant_dex_builder)
 FetchContent_Populate(dobby)
+FetchContent_Populate(parallel_hashmap)
 
 # Dobby 809f8ca has Android/NDK compatibility issues. Patch only files
 # that actually exist in this pinned revision. In particular, this revision
@@ -128,6 +134,19 @@ file(WRITE "${DOBBY_LOGGING}" "${DOBBY_LOGGING_TEXT}")
 set(LSPLANT_DEX_DIR "${lsplant_SOURCE_DIR}/lsplant/src/main/jni/external/dex_builder")
 file(MAKE_DIRECTORY "${LSPLANT_DEX_DIR}")
 file(COPY "${lsplant_dex_builder_SOURCE_DIR}/" DESTINATION "${LSPLANT_DEX_DIR}")
+
+# DexBuilder's source archive does not include its git submodule
+# external/parallel_hashmap. Its CMakeLists.txt unconditionally adds that
+# directory, so populate the dependency separately and vendor it into the
+# exact path DexBuilder expects before LSPlant's native CMake is evaluated.
+set(PHMAP_DIR "${LSPLANT_DEX_DIR}/external/parallel_hashmap")
+if(NOT EXISTS "${PHMAP_DIR}/CMakeLists.txt")
+    file(MAKE_DIRECTORY "${LSPLANT_DEX_DIR}/external")
+    file(COPY "${parallel_hashmap_SOURCE_DIR}/" DESTINATION "${PHMAP_DIR}")
+endif()
+if(NOT EXISTS "${PHMAP_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "parallel_hashmap dependency is missing from DexBuilder: ${PHMAP_DIR}/CMakeLists.txt")
+endif()
 # LSPlant is a multi-module repository; its native CMake entry point is
 # lsplant/src/main/jni/CMakeLists.txt. Add that native project explicitly so
 # the lsplant_static target is actually created in this build.
