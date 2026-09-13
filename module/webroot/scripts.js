@@ -55,8 +55,6 @@ const templates = {
                                                            Board: ${escapeHtml(data.board)}<br>
                                                            Bootloader: ${escapeHtml(data.bootloader)}<br>
                                                            Hardware: ${escapeHtml(data.hardware)}<br>
-                                                           Baseband: ${escapeHtml(data.baseband)}<br>
-                                                           RAM: ${escapeHtml(data.ram_gb)} GB<br>
                                                            ID: ${escapeHtml(data.id)}<br>
                                                            Display: ${escapeHtml(data.display)}<br>
                                                            HOST: ${escapeHtml(data.host)}<br>
@@ -67,7 +65,10 @@ const templates = {
                                                            Codename: ${escapeHtml(data.codename)}<br>
                                                            User: ${escapeHtml(data.user)}<br>
                                                            SDK Fingerprint: ${escapeHtml(data.sdk_fingerprint)}<br>
-                                                           Security Patch: ${escapeHtml(data.security_patch)}`;
+                                                           Security Patch: ${escapeHtml(data.security_patch)}<br>
+                                                           Android ID: ${escapeHtml(data.android_id || '')}<br>
+                                                           Wi-Fi SSID: ${escapeHtml(data.wifi_ssid || '')}<br>
+                                                           DRM ID: ${escapeHtml(data.drm_id || '')}`;
         
         return card;
     },
@@ -813,9 +814,6 @@ function renderDeviceList() {
             const display = currentConfig[key].DISPLAY || 'Undefined';
             const fingerprint = currentConfig[key].FINGERPRINT || 'Undefined';
             const hardware = currentConfig[key].HARDWARE || 'Undefined';
-            const baseband = currentConfig[key].BASEBAND || 'Undefined';
-            const ram_gb = currentConfig[key].RAM_GB || '12';
-            const usb_debugging = currentConfig[key].USB_DEBUGGING || '0';
             const host = currentConfig[key].HOST || 'Undefined';
             const id = currentConfig[key].ID || 'Undefined';
             const incremental = currentConfig[key].INCREMENTAL || 'Undefined';
@@ -840,9 +838,6 @@ function renderDeviceList() {
                 display: display,
                 fingerprint: fingerprint,
                 hardware: hardware,
-                baseband: baseband,
-                ram_gb: ram_gb,
-                usb_debugging: usb_debugging,
                 host: host,
                 id: id,
                 incremental: incremental,
@@ -854,7 +849,10 @@ function renderDeviceList() {
                 sdk_full: sdk_full,
                 codename: codename,
                 user: user,
-                sdk_fingerprint: sdk_fingerprint
+                sdk_fingerprint: sdk_fingerprint,
+                android_id: currentConfig[key].ANDROID_ID || 'Undefined',
+                wifi_ssid: currentConfig[key].WIFI_SSID || 'Undefined',
+                drm_id: currentConfig[key].DRM_ID || 'Undefined'
             });
             
             fragment.appendChild(deviceCard);
@@ -912,6 +910,17 @@ function openDeviceModal(deviceKey = null) {
         editingDevice = deviceKey;
         const deviceData = currentConfig[deviceKey];
         document.getElementById('device-name').value = deviceData.DEVICE || '';
+        document.getElementById('device-android-id').value = deviceData.ANDROID_ID || '';
+        document.getElementById('device-wifi-ssid').value = deviceData.WIFI_SSID || '';
+        document.getElementById('device-drm-id').value = deviceData.DRM_ID || '';
+        document.getElementById('device-sim-operator').value = deviceData.SIM_OPERATOR || '';
+        document.getElementById('device-sim-operator-name').value = deviceData.SIM_OPERATOR_NAME || '';
+        document.getElementById('device-sim-country-iso').value = deviceData.SIM_COUNTRY_ISO || '';
+        document.getElementById('device-network-operator').value = deviceData.NETWORK_OPERATOR || '';
+        document.getElementById('device-network-operator-name').value = deviceData.NETWORK_OPERATOR_NAME || '';
+        document.getElementById('device-sim-serial').value = deviceData.SIM_SERIAL || '';
+        document.getElementById('device-subscriber-id').value = deviceData.SUBSCRIBER_ID || '';
+        document.getElementById('device-line1-number').value = deviceData.LINE1_NUMBER || '';
         document.getElementById('device-brand').value = deviceData.BRAND || '';
         document.getElementById('device-model').value = deviceData.MODEL || '';
         document.getElementById('device-product').value = deviceData.PRODUCT || '';
@@ -920,9 +929,6 @@ function openDeviceModal(deviceKey = null) {
         document.getElementById('device-board').value = deviceData.BOARD || '';
         document.getElementById('device-bootloader').value = deviceData.BOOTLOADER || '';
         document.getElementById('device-hardware').value = deviceData.HARDWARE || '';
-        document.getElementById('device-baseband').value = deviceData.BASEBAND || '';
-        document.getElementById('device-ram-gb').value = deviceData.RAM_GB || '12';
-        if(document.getElementById('device-usb-debugging'))document.getElementById('device-usb-debugging').value = deviceData.USB_DEBUGGING || '0';
         document.getElementById('device-id').value = deviceData.ID || '';
         document.getElementById('device-display').value = deviceData.DISPLAY || '';
         document.getElementById('device-host').value = deviceData.HOST || '';
@@ -939,6 +945,10 @@ function openDeviceModal(deviceKey = null) {
         setupAndroidSdkLink();
     } else {
         title.textContent = 'Add New Device Profile';
+    const wifiField = document.getElementById('device-wifi-ssid');
+    const drmField = document.getElementById('device-drm-id');
+    if (wifiField) wifiField.value = '';
+    if (drmField) drmField.value = '';
         editingDevice = null;
         form.reset();
         setupAndroidSdkLink();
@@ -1044,6 +1054,78 @@ function setupAndroidSdkLink() {
     });
 }
 
+function generateAndroidId() {
+    const bytes = new Uint8Array(8);
+    if (window.crypto && window.crypto.getRandomValues) {
+        window.crypto.getRandomValues(bytes);
+    } else {
+        for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function applyAndroidId(androidId) {
+    if (!androidId) return;
+    if (!/^[0-9a-fA-F]{16}$/.test(androidId)) {
+        throw new Error('Android ID must be exactly 16 hexadecimal characters');
+    }
+    await execCommand(`settings put secure android_id ${shq(androidId.toLowerCase())}`);
+}
+
+function randomHex(bytes) {
+    const data = new Uint8Array(bytes);
+    if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(data);
+    else for (let i = 0; i < data.length; i++) data[i] = Math.floor(Math.random() * 256);
+    return Array.from(data, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function generateWifiSsid() {
+    return 'COPG-' + randomHex(3).toUpperCase();
+}
+
+function generateDrmId() {
+    return randomHex(16);
+}
+
+async function loadAppPackages() {
+    const select = document.getElementById('app-profile-package');
+    if (!select) return;
+    try {
+        const out = await execCommand('pm list packages -3');
+        const packages = out.split(/\r?\n/).map(x => x.replace(/^package:/, '').trim()).filter(Boolean).sort();
+        select.innerHTML = packages.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+        if (!packages.length) select.innerHTML = '<option value="">No user applications found</option>';
+    } catch (_) {
+        select.innerHTML = '<option value="">Unable to enumerate applications</option>';
+    }
+}
+
+function openAppProfileModal() {
+    const modal = document.getElementById('app-profile-modal');
+    if (!modal) return;
+    loadAppPackages();
+    modal.style.display = 'flex';
+}
+
+function saveAppProfile(e) {
+    e.preventDefault();
+    const pkg = document.getElementById('app-profile-package').value.trim();
+    const id = document.getElementById('app-profile-android-id').value.trim().toLowerCase();
+    if (!pkg || !id || !/^[0-9a-f]{16}$/.test(id)) {
+        appendToOutput('Select an application and enter a valid 16-character Android ID', 'error');
+        return;
+    }
+    if (!currentConfig['APP_PROFILES']) currentConfig['APP_PROFILES'] = {};
+    currentConfig['APP_PROFILES'][pkg] = { ANDROID_ID: id };
+    saveConfig().then(async () => {
+        // The native Zygisk hook is installed when the target process starts.
+        // Restart the selected app so the new App Profile is picked up immediately.
+        try { await execCommand(`am force-stop ${shq(pkg)}`); } catch (_) {}
+        closeModal('app-profile-modal');
+        appendToOutput(`Android ID profile saved for ${pkg} — app restarted`, 'success');
+    }).catch(err => appendToOutput(`Failed to save app profile: ${err}`, 'error'));
+}
+
 async function saveDevice(e) {
     e.preventDefault();
     
@@ -1114,9 +1196,6 @@ async function saveDevice(e) {
     const board = document.getElementById('device-board').value.trim() || 'Undefined';
     const bootloader = document.getElementById('device-bootloader').value.trim() || 'Undefined';
     const hardware = document.getElementById('device-hardware').value.trim() || 'Undefined';
-    const baseband = document.getElementById('device-baseband').value.trim() || 'Undefined';
-    const ram_gb = document.getElementById('device-ram-gb').value.trim() || '12';
-    const usb_debugging = document.getElementById('device-usb-debugging')?document.getElementById('device-usb-debugging').value.trim()||'0':'0';
     const id = document.getElementById('device-id').value.trim() || 'Undefined';
     const display = document.getElementById('device-display').value.trim() || 'Undefined';
     const host = document.getElementById('device-host').value.trim() || 'Undefined';
@@ -1132,8 +1211,21 @@ async function saveDevice(e) {
     const codename = document.getElementById('device-codename').value.trim() || 'Undefined';
     const user = document.getElementById('device-user').value.trim() || 'Undefined';
     const sdk_fingerprint = document.getElementById('device-sdk_fingerprint').value.trim() || 'Undefined';
+    const androidId = document.getElementById('device-android-id').value.trim().toLowerCase();
+    const wifiSsid = document.getElementById('device-wifi-ssid').value.trim();
+    const drmId = document.getElementById('device-drm-id').value.trim();
+    const simOperator = document.getElementById('device-sim-operator').value.trim();
+    const simOperatorName = document.getElementById('device-sim-operator-name').value.trim();
+    const simCountryIso = document.getElementById('device-sim-country-iso').value.trim().toLowerCase();
+    const networkOperator = document.getElementById('device-network-operator').value.trim();
+    const networkOperatorName = document.getElementById('device-network-operator-name').value.trim();
+    const simSerial = document.getElementById('device-sim-serial').value.trim();
+    const subscriberId = document.getElementById('device-subscriber-id').value.trim();
+    const line1Number = document.getElementById('device-line1-number').value.trim();
     
+    const previousDeviceData = (editingDevice && currentConfig[editingDevice]) ? currentConfig[editingDevice] : {};
     const deviceData = {
+        ...previousDeviceData,
         BRAND: brand,
         DEVICE: deviceName,
         MANUFACTURER: manufacturer,
@@ -1143,9 +1235,6 @@ async function saveDevice(e) {
         BOARD: board,
         BOOTLOADER: bootloader,
         HARDWARE: hardware,
-        BASEBAND: baseband,
-        RAM_GB: ram_gb,
-        USB_DEBUGGING: usb_debugging,
         ID: id,
         DISPLAY: display,
         HOST: host,
@@ -1159,6 +1248,23 @@ async function saveDevice(e) {
         SDK_FINGERPRINT: sdk_fingerprint
     };
     
+    if (androidId) {
+        if (!/^[0-9a-f]{16}$/.test(androidId)) {
+            const field = document.getElementById('device-android-id');
+            field.classList.add('error');
+            appendToOutput('Android ID must be exactly 16 hexadecimal characters', 'error');
+            return;
+        }
+        deviceData.ANDROID_ID = androidId;
+    } else {
+        delete deviceData.ANDROID_ID;
+    }
+    
+    if (wifiSsid) deviceData.WIFI_SSID = wifiSsid; else delete deviceData.WIFI_SSID;
+    if (drmId) deviceData.DRM_ID = drmId; else delete deviceData.DRM_ID;
+    const simFields = { SIM_OPERATOR: simOperator, SIM_OPERATOR_NAME: simOperatorName, SIM_COUNTRY_ISO: simCountryIso, NETWORK_OPERATOR: networkOperator, NETWORK_OPERATOR_NAME: networkOperatorName, SIM_SERIAL: simSerial, SUBSCRIBER_ID: subscriberId, LINE1_NUMBER: line1Number };
+    Object.entries(simFields).forEach(([k,v]) => { if (v) deviceData[k] = v; else delete deviceData[k]; });
+
     if (androidVersion) {
         deviceData.ANDROID_VERSION = androidVersion;
     }
@@ -1176,6 +1282,7 @@ async function saveDevice(e) {
         }
         
         await saveConfig();
+        if (androidId) await applyAndroidId(androidId);
         closeModal('device-modal');
         renderDeviceList();
         appendToOutput(
@@ -1186,39 +1293,7 @@ async function saveDevice(e) {
         appendToOutput(`Failed to save device: ${error}`, 'error');
     }
 }
-let devicesDb=[];
-async function loadDevicesDb(){try{const r=await fetch('devices.json');if(r.ok)devicesDb=await r.json()}catch(e){}}
-function fillRandomDevice(){if(!devicesDb.length){appendToOutput('No device profiles','error');return}
-const p=devicesDb[Math.floor(Math.random()*devicesDb.length)].profile;
-document.getElementById('device-name').value=p.deviceCode||'';
-document.getElementById('device-brand').value=p.brand||'';
-document.getElementById('device-model').value=p.model||'';
-document.getElementById('device-product').value=p.productName||'';
-document.getElementById('device-manufacturer').value=p.manufacturer||'';
-document.getElementById('device-fingerprint').value=p.buildFingerprint||'';
-document.getElementById('device-board').value=p.board||'';
-document.getElementById('device-bootloader').value=p.bootloader||'';
-document.getElementById('device-hardware').value=p.hardware||'';
-document.getElementById('device-baseband').value=p.baseband||'';
-document.getElementById('device-ram-gb').value='12';
-document.getElementById('device-id').value=p.buildId||'';
-document.getElementById('device-display').value=p.buildDisplayId||'';
-document.getElementById('device-host').value=p.buildFlavor||p.buildDescription||'';
-document.getElementById('device-incremental').value=p.buildIncremental||'';
-document.getElementById('device-security_patch').value=p.securityPatch||'';
-document.getElementById('device-preview_sdk').value=p.buildCharacteristics||'';
-document.getElementById('device-sdk_full').value=p.socModel||'';
-document.getElementById('device-codename').value=p.buildProduct||'';
-document.getElementById('device-user').value=(p.buildDescription||'').split(' ')[1]||'';
-document.getElementById('device-sdk_fingerprint').value=p.buildFingerprint||'';
-document.getElementById('device-sdk-int').value='';document.getElementById('device-android-version').value=''}
-let carriersDb=[];
-async function loadCarriersDb(){try{const r=await fetch('carriers.json');if(r.ok){carriersDb=await r.json();populateCarrierSelect()}}catch(e){}}
-function populateCarrierSelect(){const s=document.getElementById('sim-carrier-select');if(!s)return;s.innerHTML='<option value="">-- Select a carrier --</option>';carriersDb.forEach(function(c,i){var o=document.createElement('option');o.value=i;o.textContent=c.carrier+' ('+c.mccmnc+') - '+c.country;s.appendChild(o)})}
-function countryToIso(c){var m={'United States':'us','United Kingdom':'gb','Germany':'de','France':'fr','Saudi Arabia':'sa','United Arab Emirates':'ae','Turkey':'tr','Japan':'jp','China':'cn','India':'in','Mexico':'mx','Brazil':'br','Argentina':'ar','Australia':'au','South Korea':'kr','Canada':'ca','Russia':'ru','Egypt':'eg'};return m[c]||c.substring(0,2).toLowerCase()}
-function onCarrierSelectChange(){var s=document.getElementById('sim-carrier-select');var i=s.value;if(i===''){document.getElementById('sim-mccmnc').value='';document.getElementById('sim-country').value='';document.getElementById('sim-iso').value='';document.getElementById('gps-lat').value='';document.getElementById('gps-long').value='';document.getElementById('gps-timezone').value='';return}var c=carriersDb[parseInt(i)];if(c){document.getElementById('sim-mccmnc').value=c.mccmnc;document.getElementById('sim-country').value=c.country;document.getElementById('sim-iso').value=countryToIso(c.country);document.getElementById('gps-lat').value=c.lat;document.getElementById('gps-long').value=c.long;document.getElementById('gps-timezone').value=c.timezone}}
-async function applySimGpsSpoof(){var cs=document.getElementById('sim-carrier-select');var ci=cs.value;var car=(ci!=='')?carriersDb[parseInt(ci)]:null;var m=document.getElementById('sim-mccmnc').value.trim();var co=document.getElementById('sim-country').value.trim();var iso=document.getElementById('sim-iso').value.trim();var la=document.getElementById('gps-lat').value.trim();var lo=document.getElementById('gps-long').value.trim();var tz=document.getElementById('gps-timezone').value.trim();var en=document.getElementById('toggle-sim-spoof').checked;var wf=document.getElementById('wifi-ssid').value.trim();var md=document.getElementById('media-drm-id').value.trim();var ml=document.getElementById('media-drm-level').value;var d={SIM_SPOOF_ENABLED:en,SIM_MCCMNC:m||'',SIM_COUNTRY:co||'',SIM_ISO:iso||'',SIM_CARRIER:car?car.carrier:'',GPS_LAT:la||'',GPS_LONG:lo||'',GPS_TIMEZONE:tz||'',WIFI_SSID:wf||'',MEDIA_DRM_ID:md||'',MEDIA_DRM_LEVEL:ml||'L3'};if(car&&en){var dd=currentConfig['COPG-VD'];if(dd){dd.SIM_MCCMNC=m;dd.SIM_COUNTRY=co;dd.SIM_ISO=iso;dd.SIM_CARRIER=car.carrier;dd.GPS_LAT=la;dd.GPS_LONG=lo;dd.GPS_TIMEZONE=tz;dd.PERSIST_SYS_TIMEZONE=tz;dd.BASEBAND=document.getElementById('device-baseband').value.trim()||dd.BASEBAND||'';dd.RAM_GB=document.getElementById('device-ram-gb').value.trim()||dd.RAM_GB||'12';dd.USB_DEBUGGING=document.getElementById('device-usb-debugging')?document.getElementById('device-usb-debugging').value:'0'}}try{var k='COPG-VD-SimGps';currentConfig[k]=d;if(!configKeyOrder.includes(k))configKeyOrder.push(k);await saveConfig();appendToOutput('Sim/GPS applied: '+(car?car.carrier+' ('+m+')':m)+' @ '+la+','+lo+' ('+tz+')','success')}catch(e){appendToOutput('Failed: '+e,'error')}}
-function loadSimGpsState(){var d=currentConfig['COPG-VD-SimGps'];if(d){document.getElementById('toggle-sim-spoof').checked=d.SIM_SPOOF_ENABLED||false;document.getElementById('sim-mccmnc').value=d.SIM_MCCMNC||'';document.getElementById('sim-country').value=d.SIM_COUNTRY||'';document.getElementById('sim-iso').value=d.SIM_ISO||'';document.getElementById('gps-lat').value=d.GPS_LAT||'';document.getElementById('gps-long').value=d.GPS_LONG||'';document.getElementById('gps-timezone').value=d.GPS_TIMEZONE||'';document.getElementById('wifi-ssid').value=d.WIFI_SSID||'';document.getElementById('media-drm-id').value=d.MEDIA_DRM_ID||'';document.getElementById('media-drm-level').value=d.MEDIA_DRM_LEVEL||'L3';}}
+
 async function saveConfig() {
     try {
         const orderedConfig = {};
@@ -1573,11 +1648,36 @@ function applyEventListeners() {
         if (popup) closePopup(popup.id);
     }));
 
-    document.getElementById('device-form').addEventListener('submit',saveDevice);var rb=document.getElementById('random-device-btn');if(rb)rb.addEventListener('click',fillRandomDevice);
-var rd=document.getElementById('random-drm-btn');if(rd)rd.addEventListener('click',function(){
-var chars='0123456789abcdef';var id='';for(var i=0;i<16;i++)id+=chars[Math.floor(Math.random()*chars.length)];
-document.getElementById('media-drm-id').value=id;
-});var tp=document.getElementById('tab-device-profile');var ts=document.getElementById('tab-sim-gps-spoof');if(tp)tp.addEventListener('click',function(){tp.classList.add('active');ts.classList.remove('active');document.getElementById('device-profile-section').classList.add('active');document.getElementById('sim-gps-section').classList.remove('active')});if(ts)ts.addEventListener('click',function(){ts.classList.add('active');tp.classList.remove('active');document.getElementById('sim-gps-section').classList.add('active');document.getElementById('device-profile-section').classList.remove('active')});var cs=document.getElementById('sim-carrier-select');if(cs)cs.addEventListener('change',onCarrierSelectChange);var ab=document.getElementById('apply-sim-gps');if(ab)ab.addEventListener('click',applySimGpsSpoof);
+    document.getElementById('device-form').addEventListener('submit', saveDevice);
+
+    const wifiRandom = document.getElementById('generate-wifi-ssid');
+    if (wifiRandom) wifiRandom.addEventListener('click', () => {
+        document.getElementById('device-wifi-ssid').value = generateWifiSsid();
+    });
+    const drmRandom = document.getElementById('generate-drm-id');
+    if (drmRandom) drmRandom.addEventListener('click', () => {
+        document.getElementById('device-drm-id').value = generateDrmId();
+    });
+    const appRandom = document.getElementById('generate-app-android-id');
+    if (appRandom) appRandom.addEventListener('click', () => {
+        document.getElementById('app-profile-android-id').value = generateAndroidId();
+    });
+    const appForm = document.getElementById('app-profile-form');
+    if (appForm) appForm.addEventListener('submit', saveAppProfile);
+    const appProfileButton = document.getElementById('app-profile-button');
+    if (appProfileButton) appProfileButton.addEventListener('click', openAppProfileModal);
+
+    const generateAndroidIdButton = document.getElementById('generate-android-id');
+    if (generateAndroidIdButton) {
+        generateAndroidIdButton.addEventListener('click', () => {
+            const input = document.getElementById('device-android-id');
+            if (!input) return;
+            input.value = generateAndroidId();
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.focus();
+            input.select();
+        });
+    }
 
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
@@ -1623,9 +1723,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadToggleStates();
     await loadConfig();
     applyEventListeners();
-    loadDevicesDb();
-    loadCarriersDb();
-    loadSimGpsState();
     switchTab('settings');
 });
 
