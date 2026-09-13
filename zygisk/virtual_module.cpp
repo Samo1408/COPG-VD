@@ -23,7 +23,7 @@ static const std::string config_file = "/data/adb/COPG-VD.json";
 static const std::string rom_prop_file = "/system/build.prop";
 static const std::string version_policy_file = "/data/adb/modules/COPG-VD/.spoof.version";
 
-namespace copg_lsplant { bool init(JNIEnv* env); }
+namespace copg_lsplant { bool init(JNIEnv* env); bool initialized(); jobject callbackMethod(JNIEnv* env); }
 namespace copg_device_hooks { void install(JNIEnv* env); }
 
 // The Android version belongs to the ROM, not to the build being spoofed. An app told the SDK
@@ -263,7 +263,7 @@ static bool hookSettingsMethod(JNIEnv* env, const char* name,
     jclass classClass = env->FindClass("java/lang/Class");
     if (!secure || !classClass) { env->ExceptionClear(); return false; }
     jmethodID getDeclared = env->GetMethodID(classClass, "getDeclaredMethod", "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;");
-    jmethodID hookCallback = env->GetMethodID(env->FindClass("java/lang/invoke/MethodHandle"), "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;");
+    jobject hookCallback = copg_lsplant::callbackMethod(env);
     if (!getDeclared || !hookCallback) { env->ExceptionClear(); return false; }
     jobjectArray p = env->NewObjectArray(params.size(), classClass, nullptr);
     for (jsize i = 0; i < static_cast<jsize>(params.size()); ++i) env->SetObjectArrayElement(p, i, params[i]);
