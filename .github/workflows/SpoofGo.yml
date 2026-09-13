@@ -68,7 +68,7 @@ jobs:
           sudo rm -rf /var/cache/man /var/lib/man-db /usr/share/man 2>/dev/null || true
           echo 'DPkg::Post-Invoke { ":"; };' | sudo tee /etc/apt/apt.conf.d/99noman >/dev/null
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake zip curl
+          sudo apt-get install -y build-essential cmake ninja-build zip curl
 
       # One .so per ABI, named the way Zygisk loads them: zygisk/<abi>.so.
       # Plain cmake instead of a third-party action: one less thing to trust in a build that
@@ -80,12 +80,11 @@ jobs:
           for abi in $ABIS; do
             echo "::group::$abi"
             start=$(date -u +%s)
-            cmake -S zygisk -B "zygisk/build/$abi" \
+            cmake -S zygisk -B "zygisk/build/$abi" -G Ninja \
               -DCMAKE_TOOLCHAIN_FILE="$NDK_PATH/build/cmake/android.toolchain.cmake" \
               -DANDROID_ABI="$abi" \
               -DANDROID_PLATFORM=android-28 \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_MAKE_PROGRAM=/usr/bin/make
+              -DCMAKE_BUILD_TYPE=Release
             cmake --build "zygisk/build/$abi" --parallel "$(nproc)"
             if [ ! -f "zygisk/build/$abi/libspoof.so" ]; then
               echo "::error::$abi library not built"
