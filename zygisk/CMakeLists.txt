@@ -147,41 +147,9 @@ endif()
 if(NOT EXISTS "${PHMAP_DIR}/CMakeLists.txt")
     message(FATAL_ERROR "parallel_hashmap dependency is missing from DexBuilder: ${PHMAP_DIR}/CMakeLists.txt")
 endif()
-# LSPlant/DexBuilder currently use ordinary C++ sources, not C++20 module units.
-# CMake 3.31 enables module scanning by default for eligible C++ targets, but
-# the CI invokes the Unix Makefiles generator, which cannot support that scan.
-# Disable scanning before either dependency creates its targets.
-set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL "Disable C++ module scanning for Makefiles" FORCE)
-
-# LSPlant is a multi-module repository; its native CMake entry point is
-# lsplant/src/main/jni/CMakeLists.txt. Add that native project explicitly so
-# the lsplant_static target is actually created in this build.
-set(LSPLANT_NATIVE_DIR "${lsplant_SOURCE_DIR}/lsplant/src/main/jni")
-if(NOT EXISTS "${LSPLANT_NATIVE_DIR}/CMakeLists.txt")
-    message(FATAL_ERROR "LSPlant native CMakeLists.txt is missing: ${LSPLANT_NATIVE_DIR}/CMakeLists.txt")
-endif()
-add_subdirectory("${LSPLANT_NATIVE_DIR}" "${lsplant_BINARY_DIR}/native")
-
-if(NOT TARGET lsplant_static)
-    message(FATAL_ERROR "LSPlant target lsplant_static was not created")
-endif()
-
-# CMake 3.31 may still enable C++ module scanning on targets created by
-# LSPlant/DexBuilder even when CMAKE_CXX_SCAN_FOR_MODULES was disabled before
-# add_subdirectory(). Unix Makefiles cannot consume the generated module scan
-# graph, while these projects contain ordinary C++ sources only. Override the
-# target property explicitly after the dependency targets exist.
-foreach(_module_target IN ITEMS lsplant_static dex_builder_static)
-    if(TARGET ${_module_target})
-        set_target_properties(${_module_target}
-            PROPERTIES CXX_SCAN_FOR_MODULES OFF)
-        get_target_property(_module_scan ${_module_target} CXX_SCAN_FOR_MODULES)
-        if(NOT _module_scan STREQUAL "OFF")
-            message(FATAL_ERROR
-                "C++ module scanning could not be disabled for target ${_module_target}")
-        endif()
-    endif()
-endforeach()
+# LSPlant and DexBuilder use C++20 module units (FILE_SET CXX_MODULES / import).
+# The CI generator must therefore be a module-capable generator such as Ninja.
+# Do not disable C++ module scanning here: doing so makes CMake reject these targets.
 
 # Dobby 809f8ca needs two small Android/Clang compatibility patches.
 # Patch the exact upstream source rather than relying on a version-sensitive
