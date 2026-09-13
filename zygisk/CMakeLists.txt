@@ -39,19 +39,33 @@ file(MAKE_DIRECTORY "${LSPLANT_DEX_DIR}")
 file(COPY "${lsplant_dex_builder_SOURCE_DIR}/" DESTINATION "${LSPLANT_DEX_DIR}")
 FetchContent_MakeAvailable(lsplant)
 
-# Dobby 809f8ca has two Android/Clang source issues that prevent it from
-# compiling with current NDKs. Patch the vendored source before configuring it.
-FetchContent_Populate(dobby)
+# Dobby 809f8ca needs two small Android/Clang compatibility patches.
+# Patch the exact upstream source rather than relying on a version-sensitive
+# regex, because os_arch_features.h and the ARM64 assembly are fetched at
+# configure time.
 set(DOBBY_OS_ARCH "${dobby_SOURCE_DIR}/common/os_arch_features.h")
 file(READ "${DOBBY_OS_ARCH}" DOBBY_OS_TEXT)
-string(REPLACE "#include \"PlatformUnifiedInterface/platform.h\"" "#include <sys/mman.h>\n#include <unistd.h>" DOBBY_OS_TEXT "${DOBBY_OS_TEXT}")
-string(REGEX REPLACE "#if defined\\(ANDROID\\)\\n  auto page = \\(void \\*\\)ALIGN_FLOOR\\(address, OSMemory::PageSize\\(\\)\\);\\n  if \\(!OSMemory::SetPermission\\(page, OSMemory::PageSize\\(\\), kReadExecute\\)\\) \\{\\n    return;\\n  \\}" "#if defined(ANDROID)\n  const size_t page_size = (size_t)sysconf(_SC_PAGESIZE);\n  const uintptr_t page_addr = ((uintptr_t)address) & ~(page_size - 1);\n  mprotect((void*)page_addr, size, PROT_READ | PROT_EXEC);" DOBBY_OS_TEXT "${DOBBY_OS_TEXT}")
+
+# Avoid Dobby's OSMemory dependency on Android.  The old helper is only used
+# to make a page executable/readable after relocation, which can be done with
+# the Android/Bionic mprotect API directly.
+set(DOBBY_OS_OLD
+"namespace android {\ninline void make_memory_readable(void *address, size_t size) {\n#if defined(ANDROID)\n  auto page = (void *)ALIGN_FLOOR(address, OSMemory::PageSize());\n  if (!OSMemory::SetPermission(page, OSMemory::PageSize(), kReadExecute)) {\n    return;\n  }\n#endif\n}\n} // namespace android")
+set(DOBBY_OS_NEW
+"namespace android {\ninline void make_memory_readable(void *address, size_t size) {\n#if defined(ANDROID)\n  const size_t page_size = (size_t)sysconf(_SC_PAGESIZE);\n  const uintptr_t page = ((uintptr_t)address) & ~(page_size - 1);\n  const size_t offset = (size_t)((uintptr_t)address - page);\n  const size_t length = (size + offset + page_size - 1) & ~(page_size - 1);\n  (void)mprotect((void *)page, length, PROT_READ | PROT_EXEC);\n#endif\n}\n} // namespace android")
+string(REPLACE "#include <sys/types.h>" "#include <sys/types.h>\n#include <sys/mman.h>\n#include <unistd.h>" DOBBY_OS_TEXT "${DOBBY_OS_TEXT}")
+string(REPLACE "${DOBBY_OS_OLD}" "${DOBBY_OS_NEW}" DOBBY_OS_TEXT "${DOBBY_OS_TEXT}")
 file(WRITE "${DOBBY_OS_ARCH}" "${DOBBY_OS_TEXT}")
 
+# Android/ELF uses ELF relocations, not Mach-O @PAGE/@PAGEOFF.
 set(DOBBY_ARM64_ASM "${dobby_SOURCE_DIR}/source/TrampolineBridge/ClosureTrampolineBridge/arm64/closure_bridge_arm64.asm")
 file(READ "${DOBBY_ARM64_ASM}" DOBBY_ARM64_TEXT)
-string(REPLACE "cdecl(common_closure_bridge_handler)@PAGE" ":pg_hi21:cdecl(common_closure_bridge_handler)" DOBBY_ARM64_TEXT "${DOBBY_ARM64_TEXT}")
-string(REPLACE "cdecl(common_closure_bridge_handler)@PAGEOFF" ":lo12:cdecl(common_closure_bridge_handler)" DOBBY_ARM64_TEXT "${DOBBY_ARM64_TEXT}")
+string(REPLACE "adrp TMP_REG_0, cdecl(common_closure_bridge_handler)@PAGE"
+               "adrp TMP_REG_0, cdecl(common_closure_bridge_handler)"
+               DOBBY_ARM64_TEXT "${DOBBY_ARM64_TEXT}")
+string(REPLACE "add TMP_REG_0, TMP_REG_0, cdecl(common_closure_bridge_handler)@PAGEOFF"
+               "add TMP_REG_0, TMP_REG_0, :lo12:cdecl(common_closure_bridge_handler)"
+               DOBBY_ARM64_TEXT "${DOBBY_ARM64_TEXT}")
 file(WRITE "${DOBBY_ARM64_ASM}" "${DOBBY_ARM64_TEXT}")
 
 add_subdirectory("${dobby_SOURCE_DIR}" "${dobby_BINARY_DIR}" EXCLUDE_FROM_ALL)
