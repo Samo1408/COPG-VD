@@ -36,38 +36,37 @@ FetchContent_Populate(lsplant)
 FetchContent_Populate(lsplant_dex_builder)
 FetchContent_Populate(dobby)
 
-# Dobby 809f8ca has Android/NDK compatibility issues. Patch only the
-# exact upstream call sites documented for this revision. This avoids broad
-# regex rewrites that can accidentally modify unrelated source code.
+# Dobby 809f8ca has Android/NDK compatibility issues. Patch only files
+# that actually exist in this pinned revision. In particular, this revision
+# calls the Linux runtime file ProcessRuntimeUtility.cc (not ProcessRuntime.cc).
 set(DOBBY_ROOT "${dobby_SOURCE_DIR}")
 set(DOBBY_CODE_PATCH "${DOBBY_ROOT}/source/Backend/UserMode/ExecMemory/code-patch-tool-posix.cc")
-set(DOBBY_PROCESS_RUNTIME "${DOBBY_ROOT}/source/Backend/UserMode/PlatformUtil/Linux/ProcessRuntime.cc")
-set(DOBBY_SYMBOL_RESOLVER "${DOBBY_ROOT}/builtin-plugin/SymbolResolver/elf/dobby_symbol_resolver.cc")
+set(DOBBY_PROCESS_RUNTIME "${DOBBY_ROOT}/source/Backend/UserMode/PlatformUtil/Linux/ProcessRuntimeUtility.cc")
 set(DOBBY_LOGGING "${DOBBY_ROOT}/external/logging/logging.cc")
 
-foreach(_required IN ITEMS
-    DOBBY_CODE_PATCH
-    DOBBY_PROCESS_RUNTIME
-    DOBBY_SYMBOL_RESOLVER
-    DOBBY_LOGGING)
+foreach(_required IN ITEMS DOBBY_CODE_PATCH DOBBY_PROCESS_RUNTIME DOBBY_LOGGING)
     if(NOT EXISTS "${${_required}}")
         message(FATAL_ERROR "Dobby compatibility check failed: required source is missing: ${${_required}}")
     endif()
 endforeach()
 
-# Android build fix from Dobby issue #298: the generic Cpu.h include is stale.
+# Android build fix: code-patch-tool-posix.cc in 809f8ca still includes the
+# removed generic Cpu.h header.
 file(READ "${DOBBY_CODE_PATCH}" DOBBY_CODE_PATCH_TEXT)
-if(NOT DOBBY_CODE_PATCH_TEXT MATCHES "#include \"core/arch/CpuRegister\\.h\"")
-    string(REPLACE "#include \"core/arch/Cpu.h\""
-                   "#include \"core/arch/CpuRegister.h\""
-                   DOBBY_CODE_PATCH_TEXT "${DOBBY_CODE_PATCH_TEXT}")
+string(REPLACE "#include \"core/arch/Cpu.h\""
+               "#include \"core/arch/CpuRegister.h\""
+               DOBBY_CODE_PATCH_TEXT "${DOBBY_CODE_PATCH_TEXT}")
+if(DOBBY_CODE_PATCH_TEXT MATCHES "#include \"core/arch/Cpu\\.h\"")
+    message(FATAL_ERROR "Dobby Cpu.h compatibility patch did not apply")
 endif()
 if(NOT DOBBY_CODE_PATCH_TEXT MATCHES "#include \"core/arch/CpuRegister\\.h\"")
-    message(FATAL_ERROR "Dobby Cpu.h compatibility patch did not apply")
+    message(FATAL_ERROR "Dobby CpuRegister.h include is missing after patch")
 endif()
 file(WRITE "${DOBBY_CODE_PATCH}" "${DOBBY_CODE_PATCH_TEXT}")
 
-# Android build fix from Dobby issue #298: MemRange::start() and RuntimeModule::base.
+# Android build fix: MemRange::start is a method in the headers used by the
+# NDK build. Do NOT rename RuntimeModule::load_address here: 809f8ca actually
+# defines and uses load_address; the base rename belongs to a newer revision.
 file(READ "${DOBBY_PROCESS_RUNTIME}" DOBBY_PROCESS_TEXT)
 string(REPLACE
     "static bool memory_region_comparator(MemRange a, MemRange b)"
@@ -75,29 +74,18 @@ string(REPLACE
     DOBBY_PROCESS_TEXT "${DOBBY_PROCESS_TEXT}")
 string(REPLACE "return (a.start < b.start);" "return (a.start() < b.start());"
     DOBBY_PROCESS_TEXT "${DOBBY_PROCESS_TEXT}")
-string(REPLACE "module.load_address" "module.base"
-    DOBBY_PROCESS_TEXT "${DOBBY_PROCESS_TEXT}")
 if(DOBBY_PROCESS_TEXT MATCHES "memory_region_comparator\\(MemRange a, MemRange b\\)")
     message(FATAL_ERROR "Dobby MemRange comparator patch did not apply")
 endif()
 if(DOBBY_PROCESS_TEXT MATCHES "return \\(a\\.start < b\\.start\\);")
     message(FATAL_ERROR "Dobby MemRange::start patch did not apply")
 endif()
-if(DOBBY_PROCESS_TEXT MATCHES "module\\.load_address")
-    message(FATAL_ERROR "Dobby RuntimeModule::base patch did not apply")
+if(NOT DOBBY_PROCESS_TEXT MATCHES "return \\(a\\.start\\(\\) < b\\.start\\(\\)\\);")
+    message(FATAL_ERROR "Dobby MemRange::start() form is missing after patch")
 endif()
 file(WRITE "${DOBBY_PROCESS_RUNTIME}" "${DOBBY_PROCESS_TEXT}")
 
-file(READ "${DOBBY_SYMBOL_RESOLVER}" DOBBY_SYMBOL_TEXT)
-string(REPLACE "module.load_address" "module.base"
-    DOBBY_SYMBOL_TEXT "${DOBBY_SYMBOL_TEXT}")
-if(DOBBY_SYMBOL_TEXT MATCHES "module\\.load_address")
-    message(FATAL_ERROR "Dobby symbol resolver RuntimeModule::base patch did not apply")
-endif()
-file(WRITE "${DOBBY_SYMBOL_RESOLVER}" "${DOBBY_SYMBOL_TEXT}")
-
-# Android build fix from Dobby issue #298: logging.cc needs sys/time.h for
-# gettimeofday() on Android/Bionic.
+# Android/Bionic provides gettimeofday through sys/time.h on this revision.
 file(READ "${DOBBY_LOGGING}" DOBBY_LOGGING_TEXT)
 if(NOT DOBBY_LOGGING_TEXT MATCHES "#include <sys/time\\.h>")
     string(REPLACE "#include <sys/types.h>"
