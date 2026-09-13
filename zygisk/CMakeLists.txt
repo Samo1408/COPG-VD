@@ -64,9 +64,8 @@ if(NOT DOBBY_CODE_PATCH_TEXT MATCHES "#include \"core/arch/CpuRegister\\.h\"")
 endif()
 file(WRITE "${DOBBY_CODE_PATCH}" "${DOBBY_CODE_PATCH_TEXT}")
 
-# Android build fix: MemRange::start is a method in the headers used by the
-# NDK build. Do NOT rename RuntimeModule::load_address here: 809f8ca actually
-# defines and uses load_address; the base rename belongs to a newer revision.
+# Android/NDK compatibility: RuntimeModule exposes its load address as `base`
+# in this Dobby revision. Patch only the two ELF/Linux users below.
 file(READ "${DOBBY_PROCESS_RUNTIME}" DOBBY_PROCESS_TEXT)
 string(REPLACE
     "static bool memory_region_comparator(MemRange a, MemRange b)"
@@ -84,6 +83,35 @@ if(NOT DOBBY_PROCESS_TEXT MATCHES "return \\(a\\.start\\(\\) < b\\.start\\(\\)\\
     message(FATAL_ERROR "Dobby MemRange::start() form is missing after patch")
 endif()
 file(WRITE "${DOBBY_PROCESS_RUNTIME}" "${DOBBY_PROCESS_TEXT}")
+
+set(DOBBY_SYMBOL_RESOLVER "${DOBBY_ROOT}/builtin-plugin/SymbolResolver/elf/dobby_symbol_resolver.cc")
+if(NOT EXISTS "${DOBBY_SYMBOL_RESOLVER}")
+    message(FATAL_ERROR "Dobby compatibility check failed: ELF symbol resolver is missing")
+endif()
+file(READ "${DOBBY_SYMBOL_RESOLVER}" DOBBY_SYMBOL_TEXT)
+set(DOBBY_SYMBOL_OLD "module.load_address")
+set(DOBBY_SYMBOL_NEW "module.base")
+string(REPLACE "${DOBBY_SYMBOL_OLD}" "${DOBBY_SYMBOL_NEW}"
+               DOBBY_SYMBOL_TEXT "${DOBBY_SYMBOL_TEXT}")
+if(DOBBY_SYMBOL_TEXT MATCHES "module\\.load_address")
+    message(FATAL_ERROR "Dobby RuntimeModule load_address patch did not apply in symbol resolver")
+endif()
+if(NOT DOBBY_SYMBOL_TEXT MATCHES "module\\.base")
+    message(FATAL_ERROR "Dobby RuntimeModule::base is missing in symbol resolver after patch")
+endif()
+file(WRITE "${DOBBY_SYMBOL_RESOLVER}" "${DOBBY_SYMBOL_TEXT}")
+
+# ProcessRuntimeUtility has both assignments and reads of RuntimeModule::load_address.
+file(READ "${DOBBY_PROCESS_RUNTIME}" DOBBY_PROCESS_TEXT2)
+string(REPLACE "module.load_address" "module.base"
+               DOBBY_PROCESS_TEXT2 "${DOBBY_PROCESS_TEXT2}")
+if(DOBBY_PROCESS_TEXT2 MATCHES "module\\.load_address")
+    message(FATAL_ERROR "Dobby RuntimeModule load_address patch did not apply in ProcessRuntimeUtility")
+endif()
+if(NOT DOBBY_PROCESS_TEXT2 MATCHES "module\\.base")
+    message(FATAL_ERROR "Dobby RuntimeModule::base is missing in ProcessRuntimeUtility after patch")
+endif()
+file(WRITE "${DOBBY_PROCESS_RUNTIME}" "${DOBBY_PROCESS_TEXT2}")
 
 # Android/Bionic provides gettimeofday through sys/time.h on this revision.
 file(READ "${DOBBY_LOGGING}" DOBBY_LOGGING_TEXT)
