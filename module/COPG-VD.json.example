@@ -2,6 +2,9 @@
   "Instructions": "Use strings on double-quotes only.",
   "Instructions": "All fields are OPTIONAL. If some field is not provided, it will be skipped.",
   "Strings extracted from": "https://dl.google.com/developers/android/CANARY/images/factory/comet_beta-zp11.260717.006-factory-1458a2a5.zip",
+  "COPG-VD-Settings": {
+    "lsplant": true
+  },
   "COPG-VD": {
     "BRAND": "google",
     "DEVICE": "comet",
@@ -21,6 +24,16 @@
     "USER": "android-build",
     "SDK_FINGERPRINT": "88d3b71bccd150fc3f60ac4d1026e1db",
     "UUID": "62diQFW6nD4Hahmxok7HCfvYo9s1e42GqP9SatyVrVQ",
-    "SECURITY_PATCH": "2026-08-05"
+    "SECURITY_PATCH": "2026-08-05",
+    "WIFI_SSID": "Training-WiFi",
+    "DRM_ID": "00112233445566778899aabbccddeeff",
+    "SIM_OPERATOR": "310260",
+    "SIM_OPERATOR_NAME": "T-Mobile",
+    "SIM_COUNTRY_ISO": "us",
+    "NETWORK_OPERATOR": "310260",
+    "NETWORK_OPERATOR_NAME": "T-Mobile",
+    "SIM_SERIAL": "8901260123456789012",
+    "SUBSCRIBER_ID": "310260123456789",
+    "LINE1_NUMBER": "+15551234567"
   }
 }
