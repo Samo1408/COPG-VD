@@ -37,7 +37,24 @@ FetchContent_Populate(lsplant_dex_builder)
 set(LSPLANT_DEX_DIR "${lsplant_SOURCE_DIR}/lsplant/src/main/jni/external/dex_builder")
 file(MAKE_DIRECTORY "${LSPLANT_DEX_DIR}")
 file(COPY "${lsplant_dex_builder_SOURCE_DIR}/" DESTINATION "${LSPLANT_DEX_DIR}")
-FetchContent_MakeAvailable(lsplant dobby)
+FetchContent_MakeAvailable(lsplant)
+
+# Dobby 809f8ca has two Android/Clang source issues that prevent it from
+# compiling with current NDKs. Patch the vendored source before configuring it.
+FetchContent_Populate(dobby)
+set(DOBBY_OS_ARCH "${dobby_SOURCE_DIR}/common/os_arch_features.h")
+file(READ "${DOBBY_OS_ARCH}" DOBBY_OS_TEXT)
+string(REPLACE "#include \"PlatformUnifiedInterface/platform.h\"" "#include <sys/mman.h>\n#include <unistd.h>" DOBBY_OS_TEXT "${DOBBY_OS_TEXT}")
+string(REGEX REPLACE "#if defined\\(ANDROID\\)\\n  auto page = \\(void \\*\\)ALIGN_FLOOR\\(address, OSMemory::PageSize\\(\\)\\);\\n  if \\(!OSMemory::SetPermission\\(page, OSMemory::PageSize\\(\\), kReadExecute\\)\\) \\{\\n    return;\\n  \\}" "#if defined(ANDROID)\n  const size_t page_size = (size_t)sysconf(_SC_PAGESIZE);\n  const uintptr_t page_addr = ((uintptr_t)address) & ~(page_size - 1);\n  mprotect((void*)page_addr, size, PROT_READ | PROT_EXEC);" DOBBY_OS_TEXT "${DOBBY_OS_TEXT}")
+file(WRITE "${DOBBY_OS_ARCH}" "${DOBBY_OS_TEXT}")
+
+set(DOBBY_ARM64_ASM "${dobby_SOURCE_DIR}/source/TrampolineBridge/ClosureTrampolineBridge/arm64/closure_bridge_arm64.asm")
+file(READ "${DOBBY_ARM64_ASM}" DOBBY_ARM64_TEXT)
+string(REPLACE "cdecl(common_closure_bridge_handler)@PAGE" ":pg_hi21:cdecl(common_closure_bridge_handler)" DOBBY_ARM64_TEXT "${DOBBY_ARM64_TEXT}")
+string(REPLACE "cdecl(common_closure_bridge_handler)@PAGEOFF" ":lo12:cdecl(common_closure_bridge_handler)" DOBBY_ARM64_TEXT "${DOBBY_ARM64_TEXT}")
+file(WRITE "${DOBBY_ARM64_ASM}" "${DOBBY_ARM64_TEXT}")
+
+add_subdirectory("${dobby_SOURCE_DIR}" "${dobby_BINARY_DIR}" EXCLUDE_FROM_ALL)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
