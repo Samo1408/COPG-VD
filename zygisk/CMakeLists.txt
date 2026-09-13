@@ -166,6 +166,23 @@ if(NOT TARGET lsplant_static)
     message(FATAL_ERROR "LSPlant target lsplant_static was not created")
 endif()
 
+# CMake 3.31 may still enable C++ module scanning on targets created by
+# LSPlant/DexBuilder even when CMAKE_CXX_SCAN_FOR_MODULES was disabled before
+# add_subdirectory(). Unix Makefiles cannot consume the generated module scan
+# graph, while these projects contain ordinary C++ sources only. Override the
+# target property explicitly after the dependency targets exist.
+foreach(_module_target IN ITEMS lsplant_static dex_builder_static)
+    if(TARGET ${_module_target})
+        set_target_properties(${_module_target}
+            PROPERTIES CXX_SCAN_FOR_MODULES OFF)
+        get_target_property(_module_scan ${_module_target} CXX_SCAN_FOR_MODULES)
+        if(NOT _module_scan STREQUAL "OFF")
+            message(FATAL_ERROR
+                "C++ module scanning could not be disabled for target ${_module_target}")
+        endif()
+    endif()
+endforeach()
+
 # Dobby 809f8ca needs two small Android/Clang compatibility patches.
 # Patch the exact upstream source rather than relying on a version-sensitive
 # regex, because os_arch_features.h and the ARM64 assembly are fetched at
