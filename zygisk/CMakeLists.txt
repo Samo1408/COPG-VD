@@ -56,8 +56,27 @@ foreach(_required IN ITEMS DOBBY_CODE_PATCH DOBBY_PROCESS_RUNTIME DOBBY_LOGGING)
     endif()
 endforeach()
 
-# Android build fix: code-patch-tool-posix.cc in 809f8ca still includes the
-# removed generic Cpu.h header.
+# Android build fix: Dobby 809f8ca still has source files that include the
+# legacy generic Cpu.h path (notably registers-arm.h). The revision ships
+# CpuRegister.h instead, so provide a tiny compatibility shim at the exact
+# include path expected by those sources. Do this after FetchContent_Populate()
+# and before Dobby is added, so every ABI sees the same header.
+set(DOBBY_ARCH_DIR "${DOBBY_ROOT}/source/core/arch")
+set(DOBBY_CPU_REGISTER "${DOBBY_ARCH_DIR}/CpuRegister.h")
+set(DOBBY_CPU_COMPAT "${DOBBY_ARCH_DIR}/Cpu.h")
+if(NOT EXISTS "${DOBBY_CPU_REGISTER}")
+    message(FATAL_ERROR "Dobby compatibility check failed: CpuRegister.h is missing: ${DOBBY_CPU_REGISTER}")
+endif()
+if(NOT EXISTS "${DOBBY_CPU_COMPAT}")
+    file(WRITE "${DOBBY_CPU_COMPAT}" "#pragma once\n#include \"core/arch/CpuRegister.h\"\n")
+endif()
+if(NOT EXISTS "${DOBBY_CPU_COMPAT}")
+    message(FATAL_ERROR "Dobby Cpu.h compatibility shim could not be created: ${DOBBY_CPU_COMPAT}")
+endif()
+
+# code-patch-tool-posix.cc in 809f8ca also includes the legacy generic Cpu.h
+# header. Prefer the concrete replacement there while keeping the shim above
+# for other Dobby sources that still use the old include path.
 file(READ "${DOBBY_CODE_PATCH}" DOBBY_CODE_PATCH_TEXT)
 string(REPLACE "#include \"core/arch/Cpu.h\""
                "#include \"core/arch/CpuRegister.h\""
