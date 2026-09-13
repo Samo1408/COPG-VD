@@ -13,7 +13,7 @@ using json = nlohmann::json;
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
-namespace copg_lsplant { bool init(JNIEnv* env); bool initialized(); }
+namespace copg_lsplant { bool init(JNIEnv* env); bool initialized(); jobject callbackMethod(JNIEnv* env); }
 
 namespace copg_device_hooks {
 static const char* CFG = "/data/adb/COPG-VD.json";
@@ -89,7 +89,7 @@ static bool hook(JNIEnv* e, const char* cls, const char* name, jobject value, in
     jclass cc=find(e,"java/lang/Class"); if(!cc)return false;
     jmethodID get=e->GetMethodID(cc,"getDeclaredMethod","(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;");
     jclass mh=find(e,"java/lang/invoke/MethodHandle");
-    jmethodID cb=mh?e->GetMethodID(mh,"invokeWithArguments","([Ljava/lang/Object;)Ljava/lang/Object;"):nullptr;
+    jobject cb=copg_lsplant::callbackMethod(e);
     if(!get||!cb){e->ExceptionClear();return false;}
     // Reflection receives only the Java method parameters; LSPlant's callback
     // receives the receiver as argument 0 for an instance method.
@@ -108,7 +108,7 @@ static void installWifi(JNIEnv* e,const DeviceCfg& c) {
     if(c.wifi.empty())return;
     jclass wifi=find(e,"android/net/wifi/WifiInfo"); if(!wifi)return;
     jclass cc=find(e,"java/lang/Class"); jmethodID get=e->GetMethodID(cc,"getDeclaredMethod","(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;");
-    jclass mh=find(e,"java/lang/invoke/MethodHandle"); jmethodID cb=mh?e->GetMethodID(mh,"invokeWithArguments","([Ljava/lang/Object;)Ljava/lang/Object;"):nullptr;
+    jclass mh=find(e,"java/lang/invoke/MethodHandle"); jobject cb=copg_lsplant::callbackMethod(e);
     jobjectArray p=e->NewObjectArray(0,cc,nullptr); jstring n=e->NewStringUTF("getSSID"); jobject m=get?e->CallObjectMethod(wifi,get,n,p):nullptr;
     if(e->ExceptionCheck()){e->ExceptionClear();m=nullptr;} e->DeleteLocalRef(p);e->DeleteLocalRef(n);
     std::string ssid = c.wifi;
@@ -167,7 +167,7 @@ static void installDrm(JNIEnv* e,const DeviceCfg& c) {
     if(c.drm.empty())return;
     jclass md=find(e,"android/media/MediaDrm"); jclass cc=find(e,"java/lang/Class"); jclass mh=find(e,"java/lang/invoke/MethodHandle");
     if(!md||!cc||!mh)return;
-    jmethodID gm=e->GetMethodID(cc,"getDeclaredMethod","(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;"); jmethodID cb=e->GetMethodID(mh,"invokeWithArguments","([Ljava/lang/Object;)Ljava/lang/Object;");
+    jmethodID gm=e->GetMethodID(cc,"getDeclaredMethod","(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;"); jobject cb=copg_lsplant::callbackMethod(e);
     jobjectArray p=e->NewObjectArray(1,cc,nullptr); jclass sc=find(e,"java/lang/String"); e->SetObjectArrayElement(p,0,sc);
     jstring n=e->NewStringUTF("getPropertyByteArray"); jobject m=e->CallObjectMethod(md,gm,n,p); e->DeleteLocalRef(p);e->DeleteLocalRef(n);
     if(e->ExceptionCheck()||!m){e->ExceptionClear();return;}
