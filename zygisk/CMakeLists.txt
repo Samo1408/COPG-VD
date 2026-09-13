@@ -34,6 +34,7 @@ set(LSPLANT_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 # HTTPS archive before LSPlant's own add_subdirectory() is evaluated.
 FetchContent_Populate(lsplant)
 FetchContent_Populate(lsplant_dex_builder)
+FetchContent_Populate(dobby)
 set(LSPLANT_DEX_DIR "${lsplant_SOURCE_DIR}/lsplant/src/main/jni/external/dex_builder")
 file(MAKE_DIRECTORY "${LSPLANT_DEX_DIR}")
 file(COPY "${lsplant_dex_builder_SOURCE_DIR}/" DESTINATION "${LSPLANT_DEX_DIR}")
@@ -92,12 +93,16 @@ set(ZYGISK_SOURCES
 
 add_library(virtual SHARED ${ZYGISK_SOURCES})
 
+# Link the static hook backend so no separate libdobby.so is required at runtime.
+# The packaging workflow expects the Zygisk binary under this stable output name.
+set_target_properties(virtual PROPERTIES OUTPUT_NAME spoof)
+
 find_library(log-lib log)
 
 include_directories(${CMAKE_SOURCE_DIR})
 # LSPlant public headers are exposed by its CMake target.
 
-target_link_libraries(virtual ${log-lib} lsplant_static dobby)
+target_link_libraries(virtual ${log-lib} lsplant_static dobby_static)
 
 set_target_properties(virtual PROPERTIES
     LINK_FLAGS "-Wl,--exclude-libs,ALL"
