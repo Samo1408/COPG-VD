@@ -147,6 +147,12 @@ endif()
 if(NOT EXISTS "${PHMAP_DIR}/CMakeLists.txt")
     message(FATAL_ERROR "parallel_hashmap dependency is missing from DexBuilder: ${PHMAP_DIR}/CMakeLists.txt")
 endif()
+# LSPlant/DexBuilder currently use ordinary C++ sources, not C++20 module units.
+# CMake 3.31 enables module scanning by default for eligible C++ targets, but
+# the CI invokes the Unix Makefiles generator, which cannot support that scan.
+# Disable scanning before either dependency creates its targets.
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL "Disable C++ module scanning for Makefiles" FORCE)
+
 # LSPlant is a multi-module repository; its native CMake entry point is
 # lsplant/src/main/jni/CMakeLists.txt. Add that native project explicitly so
 # the lsplant_static target is actually created in this build.
