@@ -204,7 +204,17 @@ set_target_properties(virtual PROPERTIES OUTPUT_NAME spoof)
 find_library(log-lib log)
 
 include_directories(${CMAKE_SOURCE_DIR})
-# LSPlant public headers are exposed by its CMake target.
+
+# LSPlant exposes its public header from:
+# lsplant/src/main/jni/include/lsplant.hpp
+# Do not rely solely on transitive include propagation here: when lsplant_static
+# is consumed from a parent project, CMake/module scanning may not propagate
+# the PUBLIC include directory to this target on all NDK/CMake combinations.
+set(LSPLANT_PUBLIC_INCLUDE_DIR "${lsplant_SOURCE_DIR}/lsplant/src/main/jni/include")
+if(NOT EXISTS "${LSPLANT_PUBLIC_INCLUDE_DIR}/lsplant.hpp")
+    message(FATAL_ERROR "LSPlant public header is missing: ${LSPLANT_PUBLIC_INCLUDE_DIR}/lsplant.hpp")
+endif()
+target_include_directories(virtual PRIVATE "${LSPLANT_PUBLIC_INCLUDE_DIR}")
 
 target_link_libraries(virtual ${log-lib} lsplant_static dobby_static)
 
